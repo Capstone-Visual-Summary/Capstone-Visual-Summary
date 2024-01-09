@@ -16,6 +16,9 @@ class Parent:
 				if version_num in self.children: # type: ignore
 					related_children = self.get_related_children(related_version=version_num[0])
 					version_num = str(round(max(related_children) + 0.1, 1))
+
+					raise UserWarning(f'Duplicate version number found, system has automatically assigned {version_num} as the new version number.' + 
+					   f'Please update "{instance.name}" with default version {instance.version} with a new number to avoid this warning.') # type: ignore
 				
 				self.children[version_num] = {'Method Name': instance.name, 'Instance Object': instance} # type: ignore
 			elif version_num not in self.children: # type: ignore
@@ -25,7 +28,7 @@ class Parent:
 
 	def get_related_children(self, related_version=1) -> list[float]:
 		"""Returns the version numbers that are part of the same major version, i.e. returns all 1.X"""
-		
+
 		related_versions = []
 
 		for version in self.children: # type: ignore
