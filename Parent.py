@@ -14,7 +14,7 @@ class Parent:
 				self.children_names.add(instance.name) # type: ignore
                 
 				if version_num in self.children: # type: ignore
-					related_children = self.get_related_children(related_version=version_num[0])
+					related_children = [float(version) for version in self.get_related_children(related_version=version_num[0]) if isinstance(version, float)]
 					version_num = str(round(max(related_children) + 0.1, 1))
 
 					raise UserWarning(f'Duplicate version number found, system has automatically assigned {version_num} as the new version number.' + 
@@ -26,14 +26,14 @@ class Parent:
 			elif len(self.__class__.__subclasses__()) != len(self.children): # type: ignore
 				raise ValueError(f'Duplicate Name and Version number. Combination of version = {version_num} and name = "{instance.name}" is already used. Please change one or the other or both.') # type: ignore
 
-	def get_related_children(self, related_version=1) -> list[float]:
-		"""Returns the version numbers that are part of the same major version, i.e. returns all 1.X"""
+	def get_related_children(self, related_version=1) -> list[str]:
+		"""Returns the version numbers that are part of the same major version in STRING, i.e. returns all 1.X"""
 
 		related_versions = []
 
 		for version in self.children: # type: ignore
 			if version.startswith(str(related_version)):
-				related_versions.append(float(version))
+					related_versions.append(version)
 		
 		return related_versions
 	
