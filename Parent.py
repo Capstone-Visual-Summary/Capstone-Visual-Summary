@@ -14,7 +14,7 @@ class Parent:
 				self.children_names.add(instance.name) # type: ignore
                 
 				if version_num in self.children: # type: ignore
-					related_children = [float(version) for version in self.get_related_children(related_version=version_num[0]) if isinstance(version, float)]
+					related_children = [float(version) for version in self.get_related_children(related_version=version_num[0]) if 'WIP' not in version]
 					version_num = str(round(max(related_children) + 0.1, 1))
 
 					raise UserWarning(f'Duplicate version number found, system has automatically assigned {version_num} as the new version number.' + 
