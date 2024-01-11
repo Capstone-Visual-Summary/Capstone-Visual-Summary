@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-class Summerization_Parent(Parent):
+class SummerizationParent(Parent):
     def __init__(self) -> None:
         self.type = "Summerization"
-        self.children: dict[str, dict[str, Union[str, Summerization_Parent]]] = dict()
+        self.children: dict[str, dict[str, Union[str, SummerizationParent]]] = dict()
         self.children_names: set[int] = set()
 
     def import_data(self):
