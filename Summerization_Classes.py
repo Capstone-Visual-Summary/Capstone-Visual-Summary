@@ -27,7 +27,7 @@ class SummerizationParent(Parent):
 #     def run(self):
 #         pass
 
-class Summerization_PCA(Summerization_Parent):
+class Summerization_PCA(SummerizationParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
         self.name: str = "PCA"
@@ -76,5 +76,5 @@ class Summerization_PCA(Summerization_Parent):
         # print(f"data after PCA\n{pd.DataFrame(pca_data).head()}")
         self.visualize_data(pca_data, data)
         
-pca = Summerization_Parent()
+pca = SummerizationParent()
 pca.run()
