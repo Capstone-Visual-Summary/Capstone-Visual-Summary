@@ -82,10 +82,11 @@ class Summerization_PCA(SummerizationParent):
         # print(f"data before PCA\n{df1.head()}")
         Scaled_data = self.scale_data(df1)
         pca_data = self.apply_pca(Scaled_data)
+        # self.visualize_data(pca_data, data)
         # print(f"data after PCA\n{pd.DataFrame(pca_data).head()}")
         return pca_data
        
 pca = Summerization_PCA()
 pca_data = pca.run()
-cluster_labels = pca.apply_kmeans(pca_data, 3)
-pca.visualize_clusters(pca_data, cluster_labels)
+cluster_labels = pca.apply_kmeans(pca_data, 2)
+# pca.visualize_clusters(pca_data, cluster_labels)
