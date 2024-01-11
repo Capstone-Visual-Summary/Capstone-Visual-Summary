@@ -74,7 +74,7 @@ class Summerization_PCA(SummerizationParent):
         Scaled_data = self.scale_data(df1)
         pca_data = self.apply_pca(Scaled_data)
         # print(f"data after PCA\n{pd.DataFrame(pca_data).head()}")
-        self.visualize_data(pca_data, data)
+        # self.visualize_data(pca_data, data)
         
 pca = SummerizationParent()
 pca.run()
