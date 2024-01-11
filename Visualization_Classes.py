@@ -1,8 +1,8 @@
 from typing import Union
-from Parent import Parent
+from Parent import GrandParent
 
 
-class VisualizationParent(Parent):
+class VisualizationParent(GrandParent):
     def __init__(self) -> None:
         self.type = "Visulization"
         self.children: dict[str, dict[str, Union[str, VisualizationParent]]] = dict()

@@ -1,8 +1,8 @@
 from typing import Union
-from Parent import Parent
+from Parent import GrandParent
 
 
-class EmbeddingParent(Parent):
+class EmbeddingParent(GrandParent):
     def __init__(self) -> None:
         self.type = "Embedding"
         self.children: dict[str, dict[str, Union[str, EmbeddingParent]]] = dict()

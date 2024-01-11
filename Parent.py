@@ -1,7 +1,7 @@
 import warnings
 
 
-class Parent:
+class GrandParent:
     def __init__(self) -> None:
         pass
 
@@ -54,12 +54,12 @@ class Parent:
         self.update_children()
 
         if str(version) in self.children: # type: ignore
-            self.children[str(version)]["Instance Object"].run(**kwargs) # type: ignore
+            return self.children[str(version)]["Instance Object"].run(**kwargs) # type: ignore
         else:
             latest_version = max(
                 float(ver) for ver in self.children if "WIP" not in ver # type: ignore
             )
-            self.children[str(latest_version)]["Instance Object"].run(**kwargs) # type: ignore
+            return self.children[str(latest_version)]["Instance Object"].run(**kwargs) # type: ignore
 
     def __str__(self) -> str:
         if len(self.children) < 1:  # type: ignore

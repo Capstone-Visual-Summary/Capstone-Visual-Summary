@@ -1,12 +1,12 @@
 from typing import Union
-from Parent import Parent
+from Parent import GrandParent
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
-class SummerizationParent(Parent):
+class SummerizationParent(GrandParent):
     def __init__(self) -> None:
         self.type = "Summerization"
         self.children: dict[str, dict[str, Union[str, SummerizationParent]]] = dict()
