@@ -12,11 +12,8 @@ class SummerizationParent(GrandParent):
         self.children: dict[str, dict[str, Union[str, SummerizationParent]]] = dict()
         self.children_names: set[int] = set()
 
-    def import_data(self):
-        pass
-
-    def export_data(self):
-        pass
+    def run(self, version = -1, **kwargs):
+        return super().run(version, **kwargs)
 
 
 # class Summerization_ADD_METHOD_NAME(Summerization_Parent):

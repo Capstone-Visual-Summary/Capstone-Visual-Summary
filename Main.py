@@ -10,7 +10,8 @@ embedding_parent = EmbeddingParent()
 summerization_parent = SummerizationParent()
 visualization_parent = VisualizationParent()
 
-neighbourhood_images, images, neighbourhoods = database_parent.run(1.0) # type: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]
-
 # database_parent.run()  # Grabs latsest version that is not WIP
 # database_parent.run("1.0")  # Grabs specific version
+
+neighbourhood_images, images, neighbourhoods = database_parent.run(1.0) # type: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]
+print('gdsffg')
