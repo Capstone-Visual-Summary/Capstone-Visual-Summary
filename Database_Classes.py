@@ -2,10 +2,10 @@ from typing import Union
 from Parent import Parent
 
 
-class Database_Parent(Parent):
+class DatabaseParent(Parent):
     def __init__(self) -> None:
         self.type = "Database"
-        self.children: dict[str, dict[str, Union[str, Database_Parent]]] = dict()
+        self.children: dict[str, dict[str, Union[str, DatabaseParent]]] = dict()
         self.children_names: set[int] = set()
 
     def import_data(self):
@@ -15,10 +15,10 @@ class Database_Parent(Parent):
         pass
 
 
-class Database_ADD_METHOD_NAME(Database_Parent):
+class DatabaseADDMETHODNAME(DatabaseParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
         self.name: str = "ADD METHOD NAME"
 
-    def run(self):
+    def run(self, **kwargs):
         pass

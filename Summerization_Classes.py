@@ -2,10 +2,10 @@ from typing import Union
 from Parent import Parent
 
 
-class Summerization_Parent(Parent):
+class SummerizationParent(Parent):
     def __init__(self) -> None:
         self.type = "Summerization"
-        self.children: dict[str, dict[str, Union[str, Summerization_Parent]]] = dict()
+        self.children: dict[str, dict[str, Union[str, SummerizationParent]]] = dict()
         self.children_names: set[int] = set()
 
     def import_data(self):
@@ -15,7 +15,7 @@ class Summerization_Parent(Parent):
         pass
 
 
-class Summerization_ADD_METHOD_NAME(Summerization_Parent):
+class SummerizationADDMETHODNAME(SummerizationParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
         self.name: str = "ADD METHOD NAME"
