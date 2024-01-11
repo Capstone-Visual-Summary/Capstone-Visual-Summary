@@ -1,7 +1,6 @@
 from typing import Union
 from Parent import Parent
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -42,21 +41,18 @@ class Summerization_PCA(SummerizationParent):
         return df1
 
     def scale_data(self, df1):
-        from sklearn.preprocessing import StandardScaler
         scaling = StandardScaler()
         scaling.fit(df1)
         Scaled_data = scaling.transform(df1)
         return Scaled_data
 
     def apply_pca(self, Scaled_data):
-        from sklearn.decomposition import PCA
         pca = PCA(n_components=2)
         pca.fit(Scaled_data)
         x = pca.transform(Scaled_data)
         return x
         
     def visualize_data(self, x, data):
-        # Visualize the data
         plt.figure(figsize=(10,10))
         plt.scatter(x[data['target'] == 0, 0], x[data['target'] == 0, 1], label=data['target_names'][1])
         plt.scatter(x[data['target'] == 1, 0], x[data['target'] == 1, 1], label=data['target_names'][0])
