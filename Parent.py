@@ -50,16 +50,16 @@ class Parent:
 
         return related_versions
 
-    def run(self, version=-1.0):
+    def run(self, version=-1.0, **kwargs) -> None:
         self.update_children()
 
-        if str(version) in self.children:
-            self.children[str(version)]["Instance Object"].run()
+        if str(version) in self.children: # type: ignore
+            self.children[str(version)]["Instance Object"].run(**kwargs) # type: ignore
         else:
             latest_version = max(
-                float(ver) for ver in self.children if "WIP" not in ver
+                float(ver) for ver in self.children if "WIP" not in ver # type: ignore
             )
-            self.children[str(latest_version)]["Instance Object"].run()
+            self.children[str(latest_version)]["Instance Object"].run(**kwargs) # type: ignore
 
     def __str__(self) -> str:
         if len(self.children) < 1:  # type: ignore
