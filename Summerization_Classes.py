@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
 
 class SummerizationParent(Parent):
     def __init__(self) -> None:
@@ -61,6 +62,18 @@ class Summerization_PCA(SummerizationParent):
         plt.legend(title='Classes')
         plt.show()
     
+    def apply_kmeans(self, data, n_clusters):
+        kmeans = KMeans(n_clusters=n_clusters, random_state=0)
+        kmeans.fit(data)
+        return kmeans.labels_
+
+    def visualize_clusters(self, x, labels):
+        plt.figure(figsize=(10,10))
+        plt.scatter(x[:, 0], x[:, 1], c=labels, cmap='viridis')
+        plt.xlabel('pc1')
+        plt.ylabel('pc2')
+        plt.show()
+        
     def run(self):
         data = self.load_dummy_data()
         # print(f'label names = {data["target_names"]}')
@@ -70,7 +83,9 @@ class Summerization_PCA(SummerizationParent):
         Scaled_data = self.scale_data(df1)
         pca_data = self.apply_pca(Scaled_data)
         # print(f"data after PCA\n{pd.DataFrame(pca_data).head()}")
-        # self.visualize_data(pca_data, data)
-        
-pca = SummerizationParent()
-pca.run()
+        return pca_data
+       
+pca = Summerization_PCA()
+pca_data = pca.run()
+cluster_labels = pca.apply_kmeans(pca_data, 3)
+pca.visualize_clusters(pca_data, cluster_labels)
