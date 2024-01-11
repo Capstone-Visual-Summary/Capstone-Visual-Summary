@@ -1,9 +1,7 @@
-from Database_Classes import (
-    Database_Parent,
-)  # If you get en error with not being able to find subclasses
-from Embedding_Classes import (
-    Embedding_Parent,
-)  # Change the imports to: from ..... import *
+# If you get en error with not being able to find subclasses
+# Change the imports to: from ..... import *
+from Database_Classes import Database_Parent
+from Embedding_Classes import Embedding_Parent
 from Summerization_Classes import Summerization_Parent
 from Visualization_Classes import Visualization_Parent
 

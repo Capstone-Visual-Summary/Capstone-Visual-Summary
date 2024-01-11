@@ -28,8 +28,8 @@ class Parent:
 
                     message_warning = (
                         f"Duplicate version number found, system has automatically assigned {version_num} as the new version number. "
-                        + f'Please update "{instance.name}" with default version {instance.version} with a new number to avoid this warning.'
-                    )  # type: ignore
+                        + f'Please update "{instance.name}" with default version {instance.version} with a new number to avoid this warning.' # type: ignore
+                    )  
 
                     warnings.warn(message_warning, UserWarning)
 
