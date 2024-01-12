@@ -1,18 +1,15 @@
 from typing import Union
-from Parent import Parent
+from Parent import GrandParent
 
 
-class EmbeddingParent(Parent):
+class EmbeddingParent(GrandParent):
     def __init__(self) -> None:
         self.type = "Embedding"
         self.children: dict[str, dict[str, Union[str, EmbeddingParent]]] = dict()
         self.children_names: set[int] = set()
 
-    def import_data(self):
-        pass
-
-    def export_data(self):
-        pass
+    def run(self, version = -1, **kwargs):
+        return super().run(version, **kwargs)
 
 
 class EmbeddingADDMETHODNAME(EmbeddingParent):
