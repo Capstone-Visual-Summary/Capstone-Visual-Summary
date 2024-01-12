@@ -18,15 +18,8 @@ class SummarizationParent(GrandParent):
 
 K = 2 # number of clusters
 N = 2 # number of components
+SEED = 42 #random seed
 
-
-# class SummerizationADDMETHODNAME(SummarizationParent):
-#     def __init__(self) -> None:
-#         self.version: float | str = 1.0
-#         self.name: str = "ADD METHOD NAME"
-
-#     def run(self):
-#         pass
 
 class SummerizationPCAKmeans(SummarizationParent):
     def __init__(self) -> None:
@@ -64,7 +57,7 @@ class SummerizationPCAKmeans(SummarizationParent):
         plt.show()
     
     def apply_kmeans(self, data, n_clusters):
-        kmeans = KMeans(n_clusters=n_clusters, random_state=0)
+        kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=SEED)
         kmeans.fit(data)
         return kmeans.labels_
 
@@ -75,7 +68,7 @@ class SummerizationPCAKmeans(SummarizationParent):
         plt.ylabel('pc2')
         plt.show()
         
-    def run(self):
+    def run(self, visualize = False):
         data = self.load_dummy_data()
         # print(f'label names = {data["target_names"]}')
         # print(f'feature names = {data["feature_names"]}')
@@ -84,10 +77,11 @@ class SummerizationPCAKmeans(SummarizationParent):
         Scaled_data = self.scale_data(df1)
         pca_data = self.apply_pca(Scaled_data)
         # print(f"data after PCA\n{pd.DataFrame(pca_data).head()}")
-        # self.visualize_data(pca_data, data)
         cluster_labels = self.apply_kmeans(pca_data, K)
-        # self.visualize_clusters(pca_data, cluster_labels)
+        if visualize:
+            self.visualize_data(pca_data, data)
+            self.visualize_clusters(pca_data, cluster_labels)
         return pca_data, cluster_labels
        
 pca = SummerizationPCAKmeans()
-pca.run()
+pca.run(visualize=True)
