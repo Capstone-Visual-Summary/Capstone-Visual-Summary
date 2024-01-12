@@ -30,7 +30,7 @@ class SummerizationParent(Parent):
 #     def run(self):
 #         pass
 
-class Summerization_PCA(SummerizationParent):
+class SummerizationPCAKmeans(SummerizationParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
         self.name: str = "PCA"
@@ -86,10 +86,10 @@ class Summerization_PCA(SummerizationParent):
         Scaled_data = self.scale_data(df1)
         pca_data = self.apply_pca(Scaled_data)
         # print(f"data after PCA\n{pd.DataFrame(pca_data).head()}")
-        self.visualize_data(pca_data, data)
+        # self.visualize_data(pca_data, data)
         cluster_labels = self.apply_kmeans(pca_data, K)
-        self.visualize_clusters(pca_data, cluster_labels)
+        # self.visualize_clusters(pca_data, cluster_labels)
         return pca_data, cluster_labels
        
-pca = Summerization_PCA()
+pca = SummerizationPCAKmeans()
 pca.run()
