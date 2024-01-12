@@ -1,6 +1,7 @@
 from typing import Union
 from Parent import GrandParent
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -63,12 +64,15 @@ class SummerizationPCAKmeans(SummarizationParent):
 
     def visualize_clusters(self, x, labels):
         plt.figure(figsize=(10,10))
-        plt.scatter(x[:, 0], x[:, 1], c=labels, cmap='viridis')
+        unique_labels = np.unique(labels)
+        for label in unique_labels:
+            plt.scatter(x[labels == label, 0], x[labels == label, 1], label=f'Cluster {label}', cmap='viridis')
         plt.xlabel('pc1')
         plt.ylabel('pc2')
+        plt.legend()
         plt.show()
         
-    def run(self, visualize = False):
+    def run(self, visualize = True):
         data = self.load_dummy_data()
         # print(f'label names = {data["target_names"]}')
         # print(f'feature names = {data["feature_names"]}')
