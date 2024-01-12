@@ -6,6 +6,8 @@ import geopandas as gpd
 import pandas as pd
 from geopandas import GeoDataFrame
 
+import json
+
 
 class DatabaseParent(GrandParent):
     def __init__(self) -> None:
@@ -25,8 +27,16 @@ class DatabaseGeopandasPolygons(DatabaseParent):
     def run(self) -> tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]: # type: ignore
         images = gpd.read_file('Geo-JSON Files/image_info.geojson')
         neighbourhoods = gpd.read_file('Geo-JSON Files/neighbourhood_info.geojson')
-        
+
         assigned_neighbourhoods: dict[str, set[int]] = dict()
+
+        try:
+            with open('Geo-JSON Files/neighbourhoods_v1_0.json') as json_file:
+                assigned_neighbourhoods = json.load(json_file)
+
+            return assigned_neighbourhoods, images, neighbourhoods # type: ignore
+        except:
+            pass
 
         result = gpd.sjoin(images, neighbourhoods, how='left', predicate='within')
 
