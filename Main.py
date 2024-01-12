@@ -14,3 +14,5 @@ visualization_parent = VisualizationParent()
 # database_parent.run("1.0")  # Grabs specific version
 
 neighbourhood_images, images, neighbourhoods = database_parent.run(1.0) # type: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]
+summarization_parent.run(1.0)
+print("Done")
