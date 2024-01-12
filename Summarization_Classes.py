@@ -72,7 +72,7 @@ class SummerizationPCAKmeans(SummarizationParent):
         plt.legend()
         plt.show()
         
-    def run(self, visualize = True):
+    def run(self, visualize=False):
         data = self.load_dummy_data()
         # print(f'label names = {data["target_names"]}')
         # print(f'feature names = {data["feature_names"]}')
@@ -86,6 +86,13 @@ class SummerizationPCAKmeans(SummarizationParent):
             self.visualize_data(pca_data, data)
             self.visualize_clusters(pca_data, cluster_labels)
         return pca_data, cluster_labels
-       
-pca = SummerizationPCAKmeans()
-pca.run(visualize=True)
+
+if __name__ == "__main__":
+    pca = SummerizationPCAKmeans()
+    x, y = pca.run(visualize=True)
+    print(f'{x.shape} {y.shape}')
+    df = pd.DataFrame(x, columns=['pc1', 'pc2'])
+    df['Cluster'] = y
+    print(df)
+    cluster_counts = df['Cluster'].value_counts()
+    print(cluster_counts)
