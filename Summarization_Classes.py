@@ -6,17 +6,17 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
-class SummerizationParent(GrandParent):
+class SummarizationParent(GrandParent):
     def __init__(self) -> None:
         self.type = "Summerization"
-        self.children: dict[str, dict[str, Union[str, SummerizationParent]]] = dict()
+        self.children: dict[str, dict[str, Union[str, SummarizationParent]]] = dict()
         self.children_names: set[int] = set()
 
     def run(self, version = -1, **kwargs):
         return super().run(version, **kwargs)
 
 
-# class Summerization_ADD_METHOD_NAME(Summerization_Parent):
+# class Summarization_ADD_METHOD_NAME(Summerization_Parent):
 #     def __init__(self) -> None:
 #         self.version: float | str = 1.0
 #         self.name: str = "ADD METHOD NAME"
@@ -24,7 +24,7 @@ class SummerizationParent(GrandParent):
 #     def run(self):
 #         pass
 
-class Summerization_PCA(SummerizationParent):
+class Summarization_PCA(SummarizationParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
         self.name: str = "PCA"
@@ -83,7 +83,7 @@ class Summerization_PCA(SummerizationParent):
         # print(f"data after PCA\n{pd.DataFrame(pca_data).head()}")
         return pca_data
        
-pca = Summerization_PCA()
+pca = Summarization_PCA()
 pca_data = pca.run()
 cluster_labels = pca.apply_kmeans(pca_data, 2)
 # pca.visualize_clusters(pca_data, cluster_labels)
