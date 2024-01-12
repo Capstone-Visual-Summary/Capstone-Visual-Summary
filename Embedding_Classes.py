@@ -5,7 +5,7 @@ from Parent import Parent
 class EmbeddingParent(Parent):
     def __init__(self) -> None:
         self.type = "Embedding"
-        self.children: dict[str, dict[str, Union[str, EmbeddingParent]]] = dict()
+        self.children: dict[str, dict[str, Union[str, Embedding_Parent]]] = dict()
         self.children_names: set[int] = set()
 
     def import_data(self):
