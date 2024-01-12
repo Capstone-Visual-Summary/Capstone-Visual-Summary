@@ -6,6 +6,9 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 
+K = 2 # number of clusters
+N = 2 # number of components
+
 class SummerizationParent(Parent):
     def __init__(self) -> None:
         self.type = "Summerization"
@@ -48,7 +51,7 @@ class Summerization_PCA(SummerizationParent):
         return Scaled_data
 
     def apply_pca(self, Scaled_data):
-        pca = PCA(n_components=2)
+        pca = PCA(n_components=N)
         pca.fit(Scaled_data)
         x = pca.transform(Scaled_data)
         return x
@@ -82,11 +85,11 @@ class Summerization_PCA(SummerizationParent):
         # print(f"data before PCA\n{df1.head()}")
         Scaled_data = self.scale_data(df1)
         pca_data = self.apply_pca(Scaled_data)
-        # self.visualize_data(pca_data, data)
         # print(f"data after PCA\n{pd.DataFrame(pca_data).head()}")
-        return pca_data
+        self.visualize_data(pca_data, data)
+        cluster_labels = self.apply_kmeans(pca_data, K)
+        self.visualize_clusters(pca_data, cluster_labels)
+        return pca_data, cluster_labels
        
 pca = Summerization_PCA()
-pca_data = pca.run()
-cluster_labels = pca.apply_kmeans(pca_data, 2)
-# pca.visualize_clusters(pca_data, cluster_labels)
+pca.run()
