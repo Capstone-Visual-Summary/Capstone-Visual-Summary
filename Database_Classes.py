@@ -27,7 +27,7 @@ class DatabaseGeopandasPolygons(DatabaseParent):
     def run(self) -> tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]: # type: ignore
         images = gpd.read_file('Geo-JSON Files/image_info.geojson')
         neighbourhoods = gpd.read_file('Geo-JSON Files/neighbourhood_info.geojson')
-
+        
         assigned_neighbourhoods: dict[str, set[int]] = dict()
 
         try:
@@ -50,5 +50,11 @@ class DatabaseGeopandasPolygons(DatabaseParent):
                 assigned_neighbourhoods[neighbourhood_id] = set()
 
             assigned_neighbourhoods[neighbourhood_id].add(int(row['img_id']))
+        
+        assigned_neighbourhoods_list = {key: list(value) for key, value in assigned_neighbourhoods.items()}
 
-        return {key: list(value) for key, value in assigned_neighbourhoods.items()}, images, neighbourhoods
+        with open('Geo-JSON Files/neighbourhoods_v1_0.json', 'w') as json_file:
+            json.dump(assigned_neighbourhoods_list, json_file)
+
+        return assigned_neighbourhoods_list, images, neighbourhoods
+    
