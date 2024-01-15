@@ -10,6 +10,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from scipy.spatial import distance
+from Embedding_Classes import EmbeddingResNet
 
 class SummarizationParent(GrandParent):
     def __init__(self) -> None:
@@ -30,7 +31,7 @@ class SummerizationPCAKmeans(SummarizationParent):
         from sklearn.datasets import load_breast_cancer
         data = load_breast_cancer()
         return data
-
+        
     def create_dataframe(self, data):
         df1 = pd.DataFrame(data['data'], columns=data['feature_names'])
         return df1
@@ -46,15 +47,6 @@ class SummerizationPCAKmeans(SummarizationParent):
         pca.fit(Scaled_data)
         x = pca.transform(Scaled_data)
         return x
-        
-    def visualize_data(self, x, data):
-        plt.figure(figsize=(10,10))
-        plt.scatter(x[data['target'] == 0, 0], x[data['target'] == 0, 1], label=data['target_names'][1])
-        plt.scatter(x[data['target'] == 1, 0], x[data['target'] == 1, 1], label=data['target_names'][0])
-        plt.xlabel('pc1')
-        plt.ylabel('pc2')
-        plt.legend(title='Classes')
-        plt.show()
     
     def apply_kmeans(self, data, n_clusters, seed):
         self.kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=seed)
@@ -96,23 +88,23 @@ class SummerizationPCAKmeans(SummarizationParent):
         N = kwargs['N']
         visualize = kwargs['visualize']
         seed = kwargs['seed']
-        # df1 = kwargs['data']
-        data = self.load_dummy_data()
-        df1 = self.create_dataframe(data)
+        df1 = kwargs['data']
+        print(kwargs['data'])
+        # data = self.load_dummy_data()
+        # df1 = self.create_dataframe(data)
         Scaled_data = self.scale_data(df1)
         pca_data = self.apply_pca(Scaled_data, N)
         cluster_labels = self.apply_kmeans(pca_data, K, seed)
         closest_points = self.get_closest_points_to_centroids(pca_data, cluster_labels)
         if visualize:
-            # self.visualize_data(pca_data, df1)
             self.visualize_clusters(pca_data, cluster_labels)
-        return pca_data, cluster_labels, closest_points
+        df = pd.DataFrame(pca_data, columns=['pc1', 'pc2'])
+        df['Cluster'] = cluster_labels
+        return df, closest_points
        
 if __name__ == "__main__":
     pca = SummerizationPCAKmeans()
-    x, y, z = pca.run(data=None, K=2, N=2, visualize=False, seed=42)
-    df = pd.DataFrame(x, columns=['pc1', 'pc2'])
-    df['Cluster'] = y
+    df, z = pca.run(data=None, K=2, N=2, visualize=False, seed=42)
     print(df)
     print(z)
     # print(f'{x.shape} {y.shape}')
