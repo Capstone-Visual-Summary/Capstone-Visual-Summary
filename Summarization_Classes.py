@@ -1,5 +1,5 @@
 from typing import Union
-from Parent import GrandParent
+from Grand_Parent import GrandParent
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
