@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
+from scipy.spatial import distance
 
 class SummarizationParent(GrandParent):
     def __init__(self) -> None:
@@ -25,7 +26,7 @@ SEED = 42 #random seed
 class SummerizationPCAKmeans(SummarizationParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
-        self.name: str = "PCA"
+        self.name: str = "PCA_Kmeans"
 
     def load_dummy_data(self):
         from sklearn.datasets import load_breast_cancer
@@ -58,9 +59,9 @@ class SummerizationPCAKmeans(SummarizationParent):
         plt.show()
     
     def apply_kmeans(self, data, n_clusters):
-        kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=SEED)
-        kmeans.fit(data)
-        return kmeans.labels_
+        self.kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=SEED)
+        self.kmeans.fit(data)
+        return self.kmeans.labels_
 
     def visualize_clusters(self, x, labels):
         plt.figure(figsize=(10,10))
@@ -71,14 +72,33 @@ class SummerizationPCAKmeans(SummarizationParent):
         plt.ylabel('pc2')
         plt.legend()
         plt.show()
+    
+    def get_closest_points_to_centroids(self, pca_data, cluster_labels):
+        centroids = self.kmeans.cluster_centers_
+
+        closest_points = []
+        for i, c in enumerate(centroids):
+            # Get the points in this cluster
+            points_in_cluster = pca_data[cluster_labels == i]
+            
+            # Calculate the distance between the centroid and the points in the cluster
+            distances = distance.cdist([c], points_in_cluster)[0]
+            
+            # Get the index of the smallest distance
+            closest_point_idx = np.argmin(distances)
+            
+            # Get the closest point and add it to the list
+            closest_points.append(points_in_cluster[closest_point_idx])
+
+        return closest_points
         
     def run(self, **kwargs):
         visualize = kwargs['visualize']
-        df1 = kwargs['data']
-        # data = self.load_dummy_data()
+        # df1 = kwargs['data']
+        data = self.load_dummy_data()
         # print(f'label names = {data["target_names"]}')
         # print(f'feature names = {data["feature_names"]}')
-        # df1 = self.create_dataframe(data)
+        df1 = self.create_dataframe(data)
         # print(f"data before PCA\n{df1.head()}")
         Scaled_data = self.scale_data(df1)
         pca_data = self.apply_pca(Scaled_data)
@@ -98,3 +118,5 @@ if __name__ == "__main__":
     print(df)
     cluster_counts = df['Cluster'].value_counts()
     print(cluster_counts)
+    closest_points = pca.get_closest_points_to_centroids(x, y)
+    print(closest_points)

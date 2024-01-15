@@ -15,10 +15,10 @@ class EmbeddingParent(GrandParent):
         return super().run(version, **kwargs)
 
 
-class EmbeddingADDMETHODNAME(EmbeddingParent):
+class EmbeddingResNet(EmbeddingParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
-        self.name: str = "ADD METHOD NAME"
+        self.name: str = "EmbeddingResNet"
 
     def Image2Vec_embedder_ResNet50(self, image) -> torch.Tensor:
         img2vec = Img2Vec(cuda=False, model='resnet50', layer='default', layer_output_size=2048, gpu=0)

@@ -29,8 +29,8 @@ for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(
 			embeddings[str(unique_img_id)] = embedding_parent.run(image_id = unique_img_id, img_path=path, resnet=152) # list[float]
 	
 	break
-
+# 
 print(embeddings)
 df = pd.DataFrame.from_dict(embeddings).T
-print(df)
+# print(df)
 summarization_parent.run(visualize=True, data=df)

@@ -102,7 +102,7 @@ class Img2Vec():
             else:
                 if self.model_name in ['alexnet', 'vgg']:
                     return my_embedding.numpy()[0, :]
-                elif self.model_name == 'densenet':
+                elif self.model_name == 'densenet':d
                     return torch.mean(my_embedding, (2, 3), True).numpy()[0, :, 0, 0]
                 else:
                     return my_embedding.numpy()[0, :, 0, 0]
