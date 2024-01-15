@@ -1,5 +1,5 @@
 from typing import Union
-from Parent import GrandParent
+from Grand_Parent import GrandParent
 from tqdm import tqdm
 
 import geopandas as gpd

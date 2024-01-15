@@ -26,11 +26,11 @@ for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(
 	for image_id in image_ids:
 		for index, path in enumerate(images.loc[(images['img_id'] == image_id), 'path']):
 			unique_img_id = int(image_id) * 4 + index
-			embeddings[str(unique_img_id)] = embedding_parent.run(image_id = unique_img_id, img_path=path, resnet=152) # list[float]
+			embeddings[str(unique_img_id)] = embedding_parent.run(1.0, image_id=unique_img_id, img_path=path, resnet=152) # list[float]
 	
 	break
-# 
-print(embeddings)
+
+
 df = pd.DataFrame.from_dict(embeddings).T
-# print(df)
-summarization_parent.run(visualize=True, data=df)
+df.to_pickle('embeddings_test.pkl')
+summarization_parent.run(K=3, N=3, visualize=False, data=df, seed=42)
