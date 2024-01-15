@@ -35,6 +35,10 @@ class EmbeddingADDMETHODNAME(EmbeddingParent):
         return vec
     
     def run(self, **kwargs):
+         # if not hasattr(self, 'image_embeddings'):
+        #     with open():
+        #         pass
+        #     self.image_embeddings = 1
         path = 'U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + kwargs['img_path']
 
         if kwargs['resnet'] == 50:

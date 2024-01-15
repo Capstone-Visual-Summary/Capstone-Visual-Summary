@@ -19,18 +19,17 @@ neighbourhood_images, images, neighbourhoods = database_parent.run(1.0) # type: 
 
 embeddings = dict()
 
-# embeddings[str(int(0) * 4 + 0)] = embedding_parent.run(img_path='image_0_s_a.png', resnet=152)
-# print(embeddings)
-
 for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images)):
 	neighbourhood_id = '1680'
 	image_ids = neighbourhood_images[neighbourhood_id]
 	print(image_ids)
 	for image_id in image_ids:
 		for index, path in enumerate(images.loc[(images['img_id'] == image_id), 'path']):
-			embeddings[str(int(image_id) * 4 + index)] = embedding_parent.run(img_path=path, resnet=152) # list[float]
+			unique_img_id = int(image_id) * 4 + index
+			embeddings[str(unique_img_id)] = embedding_parent.run(image_id = unique_img_id, img_path=path, resnet=152) # list[float]
 	
 	break
+
 print(embeddings)
 df = pd.DataFrame.from_dict(embeddings).T
 print(df)
