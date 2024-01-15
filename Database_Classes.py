@@ -1,25 +1,60 @@
 from typing import Union
-from Parent import Parent
+from Parent import GrandParent
+from tqdm import tqdm
+
+import geopandas as gpd
+import pandas as pd
+from geopandas import GeoDataFrame
+
+import json
 
 
-class Database_Parent(Parent):
-	def __init__(self) -> None:
-		self.type = 'Database'
-		self.children: dict[str, dict[str, Union[str, Database_Parent]]] = dict()
-		self.children_names: set[int] = set()
+class DatabaseParent(GrandParent):
+    def __init__(self) -> None:
+        self.type = "Database"
+        self.children: dict[str, dict[str, Union[str, DatabaseParent]]] = dict()
+        self.children_names: set[int] = set()
 
-	def import_data(self):
-		pass
-
-	def export_data(self):
-		pass
+    def run(self, version = -1, **kwargs):
+        return super().run(version, **kwargs)
 
 
-class Database_ADD_METHOD_NAME(Database_Parent):
-	def __init__(self) -> None:
-		self.version: float | str = 1.0
-		self.name: str = 'ADD METHOD NAME'
+class DatabaseGeopandasPolygons(DatabaseParent):
+    def __init__(self) -> None:
+        self.version: float | str = 1.0
+        self.name: str = "Geopandas Polygons"
 
-	def run(self):
-		pass
-	
+    def run(self) -> tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]: # type: ignore
+        images = gpd.read_file('Geo-JSON Files/image_info.geojson')
+        neighbourhoods = gpd.read_file('Geo-JSON Files/neighbourhood_info.geojson')
+        
+        assigned_neighbourhoods: dict[str, set[int]] = dict()
+
+        try:
+            with open('Geo-JSON Files/neighbourhoods_v1_0.json') as json_file:
+                assigned_neighbourhoods = json.load(json_file)
+
+            return assigned_neighbourhoods, images, neighbourhoods # type: ignore
+        except:
+            pass
+
+        result = gpd.sjoin(images, neighbourhoods, how='left', predicate='within')
+
+        for index, row in tqdm(result.iterrows(), total=len(result)):
+            if pd.isnull(result.at[index, 'neighbourhood_id']):
+                continue
+
+            neighbourhood_id = str(round(int(row['neighbourhood_id']), 0))
+
+            if neighbourhood_id not in assigned_neighbourhoods:
+                assigned_neighbourhoods[neighbourhood_id] = set()
+
+            assigned_neighbourhoods[neighbourhood_id].add(int(row['img_id']))
+        
+        assigned_neighbourhoods_list = {key: list(value) for key, value in assigned_neighbourhoods.items()}
+
+        with open('Geo-JSON Files/neighbourhoods_v1_0.json', 'w') as json_file:
+            json.dump(assigned_neighbourhoods_list, json_file)
+
+        return assigned_neighbourhoods_list, images, neighbourhoods
+    
