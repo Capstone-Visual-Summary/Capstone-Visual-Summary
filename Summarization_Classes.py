@@ -27,15 +27,6 @@ class SummerizationPCAKmeans(SummarizationParent):
         self.version: float | str = 1.0
         self.name: str = "PCA_Kmeans"
 
-    def load_dummy_data(self):
-        from sklearn.datasets import load_breast_cancer
-        data = load_breast_cancer()
-        return data
-        
-    def create_dataframe(self, data):
-        df1 = pd.DataFrame(data['data'], columns=data['feature_names'])
-        return df1
-
     def scale_data(self, df1):
         scaling = StandardScaler()
         scaling.fit(df1)
@@ -88,11 +79,9 @@ class SummerizationPCAKmeans(SummarizationParent):
         N = kwargs['N']
         visualize = kwargs['visualize']
         seed = kwargs['seed']
-        df1 = kwargs['data']
-        print(kwargs['data'])
-        # data = self.load_dummy_data()
-        # df1 = self.create_dataframe(data)
-        Scaled_data = self.scale_data(df1)
+        data = kwargs['data']
+        Scaled_data = self.scale_data(data)
+        # print(pd.DataFrame(Scaled_data))
         pca_data = self.apply_pca(Scaled_data, N)
         cluster_labels = self.apply_kmeans(pca_data, K, seed)
         closest_points = self.get_closest_points_to_centroids(pca_data, cluster_labels)
@@ -104,12 +93,8 @@ class SummerizationPCAKmeans(SummarizationParent):
        
 if __name__ == "__main__":
     pca = SummerizationPCAKmeans()
-    df, z = pca.run(data=None, K=2, N=2, visualize=False, seed=42)
+    data = pd.read_pickle('embeddings_test.pkl')
+    print(data)
+    df, z = pca.run(data=data, K=3, N=5, visualize=True, seed=42)
     print(df)
     print(z)
-    # print(f'{x.shape} {y.shape}')
-    # df = pd.DataFrame(x, columns=['pc1', 'pc2'])
-    # df['Cluster'] = y
-    # print(df)
-    # cluster_counts = df['Cluster'].value_counts()
-    # print(cluster_counts)

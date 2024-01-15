@@ -32,4 +32,5 @@ for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(
 
 
 df = pd.DataFrame.from_dict(embeddings).T
-summarization_parent.run(K=3, N=3, visualize=True, data=df, seed=42)
+df.to_pickle('embeddings_test.pkl')
+summarization_parent.run(K=3, N=3, visualize=False, data=df, seed=42)
