@@ -53,10 +53,14 @@ class EmbeddingResNet_2_0(EmbeddingParent):
         self.name: str = "EmbeddingResNet 2.0" 
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
-        pass
-    
+        img2vec = Img2Vec(cuda=False, model='resnet152', layer='layer4', layer_output_size=2048, gpu=0)
+        # layer = 'layer_name' For advanced users, which layer of the model to extract the output from.   default: 'avgpool'
+        img = Image.open(image).convert('RGB')
+        vec = torch.tensor(img2vec.get_vec(img))
+        return vec
+        
     def run(self, **kwargs):
-         # if not hasattr(self, 'image_embeddings'):
+        # if not hasattr(self, 'image_embeddings'):
         #     with open():
         #         pass
         #     self.image_embeddings = 1
@@ -66,3 +70,10 @@ class EmbeddingResNet_2_0(EmbeddingParent):
             return self.Image2Vec_embedder_ResNet50(path)
         else:
             return self.Image2Vec_embedder_ResNet152(path)  
+
+if __name__ == '__main__':
+    
+    embedder = EmbeddingResNet_2_0()
+    embedding = embedder.run(resnet=0, img_path = "image_0_b.png")
+    print(embedding.shape)
+
