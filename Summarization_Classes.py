@@ -1,3 +1,4 @@
+from os import close
 from typing import Union
 
 from sympy import Number
@@ -97,23 +98,22 @@ class SummerizationPCAKmeans(SummarizationParent):
         seed = kwargs['seed']
         # df1 = kwargs['data']
         data = self.load_dummy_data()
-        # print(f'label names = {data["target_names"]}')
-        # print(f'feature names = {data["feature_names"]}')
         df1 = self.create_dataframe(data)
-        # print(f"data before PCA\n{df1.head()}")
         Scaled_data = self.scale_data(df1)
         pca_data = self.apply_pca(Scaled_data, N)
-        # print(f"data after PCA\n{pd.DataFrame(pca_data).head()}")
         cluster_labels = self.apply_kmeans(pca_data, K, seed)
         closest_points = self.get_closest_points_to_centroids(pca_data, cluster_labels)
         if visualize:
-            self.visualize_data(pca_data, df1)
+            # self.visualize_data(pca_data, df1)
             self.visualize_clusters(pca_data, cluster_labels)
         return pca_data, cluster_labels, closest_points
        
 if __name__ == "__main__":
     pca = SummerizationPCAKmeans()
     x, y, z = pca.run(data=None, K=2, N=2, visualize=False, seed=42)
+    df = pd.DataFrame(x, columns=['pc1', 'pc2'])
+    df['Cluster'] = y
+    print(df)
     print(z)
     # print(f'{x.shape} {y.shape}')
     # df = pd.DataFrame(x, columns=['pc1', 'pc2'])
