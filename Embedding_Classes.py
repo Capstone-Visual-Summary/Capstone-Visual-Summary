@@ -46,3 +46,23 @@ class EmbeddingResNet(EmbeddingParent):
         else:
             return self.Image2Vec_embedder_ResNet152(path)
         
+
+class EmbeddingResNet(EmbeddingParent):
+    def __init__(self) -> None:
+        self.version: float | str = 2.0
+        self.name: str = "EmbeddingResNet" 
+
+    def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
+        pass
+    
+    def run(self, **kwargs):
+         # if not hasattr(self, 'image_embeddings'):
+        #     with open():
+        #         pass
+        #     self.image_embeddings = 1
+        path = 'U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + kwargs['img_path']
+
+        if kwargs['resnet'] == 50:
+            return self.Image2Vec_embedder_ResNet50(path)
+        else:
+            return self.Image2Vec_embedder_ResNet152(path)  
