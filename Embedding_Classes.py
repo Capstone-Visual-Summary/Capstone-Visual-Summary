@@ -18,7 +18,7 @@ class EmbeddingParent(GrandParent):
 class EmbeddingResNet(EmbeddingParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
-        self.name: str = "EmbeddingResNet"
+        self.name: str = "EmbeddingResNet 1.0"
 
     def Image2Vec_embedder_ResNet50(self, image) -> torch.Tensor:
         img2vec = Img2Vec(cuda=False, model='resnet50', layer='default', layer_output_size=2048, gpu=0)
@@ -47,10 +47,10 @@ class EmbeddingResNet(EmbeddingParent):
             return self.Image2Vec_embedder_ResNet152(path)
         
 
-class EmbeddingResNet(EmbeddingParent):
+class EmbeddingResNet_2_0(EmbeddingParent):
     def __init__(self) -> None:
         self.version: float | str = 2.0
-        self.name: str = "EmbeddingResNet" 
+        self.name: str = "EmbeddingResNet 2.0" 
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
         pass
