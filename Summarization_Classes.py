@@ -89,7 +89,12 @@ class SummerizationPCAKmeans(SummarizationParent):
 
         return closest_points
         
-    def run(self, data, K: int, N: int, visualize: bool = False, seed: int = 42):
+    def run(self, **kwargs):
+        data = kwargs['data']
+        K = kwargs['K']
+        N = kwargs['N']
+        visualize = kwargs['visualize']
+        seed = kwargs['seed']
         # df1 = kwargs['data']
         data = self.load_dummy_data()
         # print(f'label names = {data["target_names"]}')
