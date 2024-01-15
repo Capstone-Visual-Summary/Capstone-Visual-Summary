@@ -71,6 +71,25 @@ class SummerizationPCAKmeans(SummarizationParent):
         plt.ylabel('pc2')
         plt.legend()
         plt.show()
+    
+    def get_closest_points_to_centroids(self, pca_data, cluster_labels):
+        centroids = self.kmeans.cluster_centers_
+
+        closest_points = []
+        for i, c in enumerate(centroids):
+            # Get the points in this cluster
+            points_in_cluster = pca_data[cluster_labels == i]
+            
+            # Calculate the distance between the centroid and the points in the cluster
+            distances = distance.cdist([c], points_in_cluster)[0]
+            
+            # Get the index of the smallest distance
+            closest_point_idx = np.argmin(distances)
+            
+            # Get the closest point and add it to the list
+            closest_points.append(points_in_cluster[closest_point_idx])
+
+        return closest_points
         
     def run(self, **kwargs):
         visualize = kwargs['visualize']
@@ -98,3 +117,6 @@ if __name__ == "__main__":
     print(df)
     cluster_counts = df['Cluster'].value_counts()
     print(cluster_counts)
+
+    closest_points = pca.get_closest_points_to_centroids(x, y)
+    print(closest_points)
