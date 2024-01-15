@@ -2,7 +2,7 @@ from os import close
 from typing import Union
 
 from sympy import Number
-from Parent import GrandParent
+from Grand_Parent import GrandParent
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
