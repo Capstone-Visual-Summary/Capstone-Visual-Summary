@@ -2,6 +2,7 @@ from typing import Union
 from Parent import GrandParent
 from PIL import Image
 from IMG2VEC_class import Img2Vec
+import torch
 
 
 class EmbeddingParent(GrandParent):
@@ -14,7 +15,7 @@ class EmbeddingParent(GrandParent):
         return super().run(version, **kwargs)
 
 
-class EmbeddingADDMETHODNAME(EmbeddingParent):
+class EmbeddingResNet(EmbeddingParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
         self.name: str = "ADD METHOD NAME"
@@ -32,3 +33,6 @@ class EmbeddingADDMETHODNAME(EmbeddingParent):
         img = Image.open(image).convert('RGB')
         vec = torch.tensor(img2vec.get_vec(img))
         return vec
+
+embedding = EmbeddingResNet()
+embedding.Image2Vec_embedder_ResNet152('W:\staff-umbrella\imagesummary\data\Delft_NL\imagedb\image_0_b')
