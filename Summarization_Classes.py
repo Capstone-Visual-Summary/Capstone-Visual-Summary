@@ -72,20 +72,22 @@ class SummerizationPCAKmeans(SummarizationParent):
         plt.legend()
         plt.show()
         
-    def run(self, visualize = True):
-        data = self.load_dummy_data()
+    def run(self, **kwargs):
+        visualize = kwargs['visualize']
+        df1 = kwargs['data']
+        # data = self.load_dummy_data()
         # print(f'label names = {data["target_names"]}')
         # print(f'feature names = {data["feature_names"]}')
-        df1 = self.create_dataframe(data)
+        # df1 = self.create_dataframe(data)
         # print(f"data before PCA\n{df1.head()}")
         Scaled_data = self.scale_data(df1)
         pca_data = self.apply_pca(Scaled_data)
         # print(f"data after PCA\n{pd.DataFrame(pca_data).head()}")
         cluster_labels = self.apply_kmeans(pca_data, K)
         if visualize:
-            self.visualize_data(pca_data, data)
+            # self.visualize_data(pca_data, df1)
             self.visualize_clusters(pca_data, cluster_labels)
         return pca_data, cluster_labels
        
-pca = SummerizationPCAKmeans()
-pca.run(visualize=True)
+# pca = SummerizationPCAKmeans()
+# pca.run(visualize=True)

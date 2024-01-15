@@ -5,6 +5,7 @@ from Visualization_Classes import VisualizationParent
 
 from geopandas import GeoDataFrame
 import pandas as pd
+from tqdm import tqdm
 
 database_parent = DatabaseParent()
 embedding_parent = EmbeddingParent()
@@ -18,11 +19,19 @@ neighbourhood_images, images, neighbourhoods = database_parent.run(1.0) # type: 
 
 embeddings = dict()
 
-for neighbourhood_id, image_ids in neighbourhood_images.items():
+# embeddings[str(int(0) * 4 + 0)] = embedding_parent.run(img_path='image_0_s_a.png', resnet=152)
+# print(embeddings)
+
+for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images)):
+	neighbourhood_id = '1680'
+	image_ids = neighbourhood_images[neighbourhood_id]
+	print(image_ids)
 	for image_id in image_ids:
-		for index, path in enumerate(images.loc[(images['img_id'] == 0), 'path']):
-			embeddings[str(int(image_id) * 4 + 1)] = embedding_parent.run(img_path=path) # list[float]
-
-		break
-
+		for index, path in enumerate(images.loc[(images['img_id'] == image_id), 'path']):
+			embeddings[str(int(image_id) * 4 + index)] = embedding_parent.run(img_path=path, resnet=152) # list[float]
+	
+	break
 print(embeddings)
+df = pd.DataFrame.from_dict(embeddings).T
+print(df)
+summarization_parent.run(visualize=True, data=df)
