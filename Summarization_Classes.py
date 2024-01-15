@@ -89,5 +89,12 @@ class SummerizationPCAKmeans(SummarizationParent):
             self.visualize_clusters(pca_data, cluster_labels)
         return pca_data, cluster_labels
        
-# pca = SummerizationPCAKmeans()
-# pca.run(visualize=True)
+if __name__ == "__main__":
+    pca = SummerizationPCAKmeans()
+    x, y = pca.run(visualize=True)
+    print(f'{x.shape} {y.shape}')
+    df = pd.DataFrame(x, columns=['pc1', 'pc2'])
+    df['Cluster'] = y
+    print(df)
+    cluster_counts = df['Cluster'].value_counts()
+    print(cluster_counts)
