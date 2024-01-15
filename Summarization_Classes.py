@@ -90,7 +90,7 @@ class SummerizationPCAKmeans(SummarizationParent):
         df = pd.DataFrame(pca_data, columns=['pc1', 'pc2'])
         df['Cluster'] = cluster_labels
         return df, closest_points
-       
+
 if __name__ == "__main__":
     pca = SummerizationPCAKmeans()
     data = pd.read_pickle('embeddings_test.pkl')
