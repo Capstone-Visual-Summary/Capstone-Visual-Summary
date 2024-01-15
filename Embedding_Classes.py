@@ -2,7 +2,7 @@ from typing import Union
 from Parent import GrandParent
 from PIL import Image
 from IMG2VEC_class import Img2Vec
-
+import torch
 
 class EmbeddingParent(GrandParent):
     def __init__(self) -> None:
