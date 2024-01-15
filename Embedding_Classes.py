@@ -80,7 +80,7 @@ class EmbeddingResNet(EmbeddingParent):
 
 class EmbeddingResNet_2_0(EmbeddingParent):
     def __init__(self) -> None:
-        self.version: float | str = 2.0
+        self.version: float | str = '2.0 WIP'
         self.name: str = "EmbeddingResNet 2.0" 
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
@@ -94,7 +94,7 @@ class EmbeddingResNet_2_0(EmbeddingParent):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ])
 
-        modules = list(resnet152.children())[:-2]
+        modules = list(resnet152.children())[:-2] #-2 without avgpool and fc
         resnet152 = nn.Sequential(*modules)
         
         img = Image.open(image).convert('RGB')
