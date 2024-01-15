@@ -33,4 +33,4 @@ class EmbeddingResNet(EmbeddingParent):
         img = Image.open(image).convert('RGB')
         vec = torch.tensor(img2vec.get_vec(img))
         return vec
-        return vec
+
