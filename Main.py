@@ -55,6 +55,7 @@ def OneRUNtoRUNthemALL(**kwargs):
 	summarization_parent.run(summarization_version, data=embeddings, **kwargs)
 
 	visualization_parent.run(visualization_version, **kwargs)
+	print('DONE')
  
 
 OneRUNtoRUNthemALL(database_version = 1.0, start_hood = 1, stop_hood = 2, step_size = 1, 
