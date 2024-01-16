@@ -145,13 +145,11 @@ class EmbeddingResNet_2_0(EmbeddingParent):
             
         return image_embedding
 
+if __name__ == '__main__':
+    embedder = EmbeddingResNet_2_0()
+    image_embedding = embedder.run(image_id=24, img_path='image_6_s_a.png', resnet=152)
+    print(image_embedding)
 
-embedder = EmbeddingResNet_2_0()
-image_embedding = embedder.run(image_id=24, img_path='image_6_s_a.png', resnet=152)
-print(image_embedding)
-
-embedder = EmbeddingResNet()
-image_embedding = embedder.run(image_id=24, img_path='image_6_s_a.png', resnet=152)
-print(image_embedding)
-
-
+    embedder = EmbeddingResNet()
+    image_embedding = embedder.run(image_id=24, img_path='image_6_s_a.png', resnet=152)
+    print(image_embedding)
