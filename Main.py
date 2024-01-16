@@ -23,7 +23,7 @@ def OneRUNtoRUNthemALL(**kwargs):
 
 	file_name = kwargs['file_name'] if 'file_name' in kwargs else 'Empty'
 
-	print('Database rev:', database_version, 'Embedder rev:', embedder_version, 'Summarization rev:', summarization_version, 'visualization rev:', visualization_version, )
+	print('Database rev:', database_version, 'Embedder rev:', embedder_version, 'Summarization rev:', summarization_version, 'visualization rev:', visualization_version, 'file name:', file_name)
 
 	neighbourhood_images, images, neighbourhoods = database_parent.run(database_version, **kwargs) # type: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]
  
@@ -34,6 +34,7 @@ def OneRUNtoRUNthemALL(**kwargs):
 	embeddings = dict()
 
 	wanted_hoods = [i for i in range(start_hood, stop_hood, step_size)]
+	print('Using neighbourhood ids:', wanted_hoods)
 
 	for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images)):
 		if int(neighbourhood_id) not in range(start_hood, stop_hood, step_size):
@@ -45,17 +46,20 @@ def OneRUNtoRUNthemALL(**kwargs):
 			for index, path in enumerate(images.loc[(images['img_id'] == image_id), 'path']):
 				unique_img_id = int(image_id) * 4 + index
 				embeddings[str(unique_img_id)] = embedding_parent.run(embedder_version, image_id=unique_img_id, img_path=path, **kwargs) # list[float]
-	
-	# Specifiy the dictionary to a file
+
+	summarization_parent.run(summarization_version, data=embeddings, **kwargs)
+
+	visualization_parent.run(visualization_version, **kwargs)
+<<<<<<< HEAD
+
+	# Specify the file path
 	file_path = 'summarization_data.pth'
 
 	# Save the dictionary to a file
 	torch.save(embeddings, file_path)
- 
-	summarization_parent.run(summarization_version, data=embeddings, **kwargs)
-
-	visualization_parent.run(visualization_version, **kwargs)
+=======
 	print('DONE')
+>>>>>>> 709b205c01619e3b862da04a58697adf806d9e50
  
 
 OneRUNtoRUNthemALL(database_version = 1.0, start_hood = 1, stop_hood = 2, step_size = 1, 
@@ -63,3 +67,5 @@ OneRUNtoRUNthemALL(database_version = 1.0, start_hood = 1, stop_hood = 2, step_s
 				   summarization_version = 1.0, K_images = 5, N_clusters = 3, N_dimensions = 5, 
 				   visualization_version = 1.0, visualize = True,
 				   file_name = '')
+
+
