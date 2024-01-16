@@ -271,12 +271,9 @@ class SummerizationHierarchy(SummarizationParent):
 
 if __name__ == "__main__":
     
-    # test_data = pd.read_csv('Embedding Files\Embeddings_1_0_0.csv')
-    # test_data_dict = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}    
-    # print(type(test_data_dict[53568]))
-    # print(test_data.head())
+    test_data = pd.read_csv('Embedding Files\Embeddings_1_0_0.csv')
+    data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
     
-    data = torch.load("summarization_data.pth")
     summarization = SummarizationParent()
     all_points, centers = summarization.run(
         summarization_version="1.1WIP",
