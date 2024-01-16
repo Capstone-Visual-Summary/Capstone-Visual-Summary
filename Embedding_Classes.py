@@ -13,7 +13,9 @@ class EmbeddingParent(GrandParent):
         self.children: dict[str, dict[str, Union[str, EmbeddingParent]]] = dict()
         self.children_names: set[int] = set()
 
-    def run(self, version = -1, **kwargs):
+    def run(self, **kwargs):
+        version = kwargs['embedding_version'] if 'embedding_version' in kwargs else -1
+        
         return super().run(version, **kwargs)
 
 
@@ -23,21 +25,29 @@ class EmbeddingResNet(EmbeddingParent):
         self.name: str = "EmbeddingResNet 1.0"
 
     def Image2Vec_embedder_ResNet50(self, image) -> torch.Tensor:
-        img2vec = Img2Vec(cuda=False, model='resnet50', layer='default', layer_output_size=2048, gpu=0)
+        use_cuda = torch.cuda.is_available()
+        print(use_cuda)
+        img2vec = Img2Vec(cuda=use_cuda, model='resnet50', layer='default', layer_output_size=2048, gpu=0)
         # layer = 'layer_name' For advanced users, which layer of the model to extract the output from.   default: 'avgpool'
         img = Image.open(image).convert('RGB')
         vec = torch.tensor(img2vec.get_vec(img))
         return vec
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
-        img2vec = Img2Vec(cuda=False, model='resnet152', layer='default', layer_output_size=2048, gpu=0)
+        use_cuda = torch.cuda.is_available()
+        print(use_cuda)
+        img2vec = Img2Vec(cuda=use_cuda, model='resnet152', layer='default', layer_output_size=2048, gpu=0)
         # layer = 'layer_name' For advanced users, which layer of the model to extract the output from.   default: 'avgpool'
         img = Image.open(image).convert('RGB')
         vec = torch.tensor(img2vec.get_vec(img))
         return vec
     
     def run(self, **kwargs):
-        file_name = 'Embedding Files/Embeddings_1_0_0.csv'
+        if 'file_name' in kwargs:
+            file_name = f"Embedding Files/kwargs['file_name']"
+        else:
+            version_split = str(self.version).split('.')
+            file_name = f'Embedding Files/Embeddings_{version_split[0]}_{version_split[1]}_0.csv'
 
         if not hasattr(self, 'image_embeddings'):
             try:
@@ -50,16 +60,16 @@ class EmbeddingResNet(EmbeddingParent):
                     self.image_embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
             except:
                 self.image_embeddings = dict()
+            
+        if 'rerun' in kwargs and kwargs['rerun']:
+                self.image_embeddings = dict()
         
         if str(kwargs['image_id']) in self.image_embeddings:
             return self.image_embeddings[str(kwargs['image_id'])]
         
         path = 'U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + kwargs['img_path']
         
-        if kwargs['resnet'] == 50:
-            image_embedding = self.Image2Vec_embedder_ResNet50(path)
-        else:
-            image_embedding = self.Image2Vec_embedder_ResNet152(path)
+        image_embedding = self.Image2Vec_embedder_ResNet152(path)
 
         self.image_embeddings[str(kwargs['image_id'])] = image_embedding
 
@@ -80,7 +90,7 @@ if __name__ == "__main__":
 
 class EmbeddingResNet_2_0(EmbeddingParent):
     def __init__(self) -> None:
-        self.version: float | str = 2.0
+        self.version: float | str = '2.0_WIP'
         self.name: str = "EmbeddingResNet 2.0" 
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
@@ -104,6 +114,9 @@ class EmbeddingResNet_2_0(EmbeddingParent):
                     self.image_embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
             except:
                 self.image_embeddings = dict()
+            
+        if 'rerun' in kwargs and kwargs['rerun']:
+            self.image_embeddings = dict()
         
         if str(kwargs['image_id']) in self.image_embeddings:
             return self.image_embeddings[str(kwargs['image_id'])]

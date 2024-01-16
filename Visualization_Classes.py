@@ -8,7 +8,9 @@ class VisualizationParent(GrandParent):
         self.children: dict[str, dict[str, Union[str, VisualizationParent]]] = dict()
         self.children_names: set[int] = set()
 
-    def run(self, version = -1, **kwargs):
+    def run(self, **kwargs):
+        version = kwargs['visualization_version'] if 'visualization_version' in kwargs else -1
+        
         return super().run(version, **kwargs)
 
 

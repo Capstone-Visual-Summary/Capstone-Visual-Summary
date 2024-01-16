@@ -16,7 +16,9 @@ class SummarizationParent(GrandParent):
         self.children: dict[str, dict[str, Union[str, SummarizationParent]]] = dict()
         self.children_names: set[int] = set()
 
-    def run(self, version = -1, **kwargs):
+    def run(self, **kwargs):
+        version = kwargs['summarization_version'] if 'summarization_version' in kwargs else -1
+        
         return super().run(version, **kwargs)
 
 
