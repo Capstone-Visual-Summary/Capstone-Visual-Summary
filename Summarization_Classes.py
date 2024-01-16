@@ -1,14 +1,22 @@
-from typing import Union
-
+from os import close
+from typing import Union, List, Dict
 from sympy import Number
 from Grand_Parent import GrandParent
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, AgglomerativeClustering
 from scipy.spatial import distance
+from Embedding_Classes import EmbeddingResNet
+import pickle
+from torch import tensor
+import torch
+import os
+from scipy.spatial import distance
+
+
+
+# I don't know why, but otherwise I'm getting an error
+os.environ["LOKY_MAX_CPU_COUNT"] = "4" 
 
 class SummarizationParent(GrandParent):
     def __init__(self) -> None:
@@ -20,106 +28,145 @@ class SummarizationParent(GrandParent):
         version = kwargs['summarization_version'] if 'summarization_version' in kwargs else -1
         
         return super().run(version, **kwargs)
+    
+class Summerization(SummarizationParent):
+    '''
+    This class first does pca and uses the pca data to cluster it using
+    the following different clustering techniques: KMeans and Hierical Clustering
 
+    '''
+    '''
+    This class performs Principal Component Analysis (PCA) on input data and applies
+    two clustering techniques: KMeans and Hierarchical Clustering.
 
-class SummerizationPCAKmeans(SummarizationParent):
+    Attributes:
+        version (float | str): The version of the Summerization class.
+        name (str): The name of the clustering technique followed by PCA (e.g., "PCA_Kmeans_Hierical").
+    '''
     def __init__(self) -> None:
         self.version: float | str = 1.0
-        self.name: str = "PCA_Kmeans"
+        self.name: str = "PCA_Kmeans_Hierical"
+        
+    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
+        '''
+        Applies Principal Component Analysis (PCA) on the input data.
 
-    def load_dummy_data(self):
-        from sklearn.datasets import load_breast_cancer
-        data = load_breast_cancer()
-        return data
+        Parameters:
+            data (dict[int, tensor]): A dictionary where keys are IDs, and values are tensors.
+            N (int): The number of principal components to retain.
 
-    def create_dataframe(self, data):
-        df1 = pd.DataFrame(data['data'], columns=data['feature_names'])
-        return df1
+        Returns:
+            dict[int, list[float]]: A dictionary where keys are IDs, and values are lists
+            of transformed data after PCA.
+        '''
+        data: dict[int, tensor] = kwargs['data']
+        N: int = kwargs['N_dimensions']
+        # Extract numerical values from tensors
+        numerical_data = torch.stack(list(data.values())).numpy()
 
-    def scale_data(self, df1):
-        scaling = StandardScaler()
-        scaling.fit(df1)
-        Scaled_data = scaling.transform(df1)
-        return Scaled_data
-
-    def apply_pca(self, Scaled_data, N):
         pca = PCA(n_components=N)
-        pca.fit(Scaled_data)
-        x = pca.transform(Scaled_data)
-        return x
+        pca.fit(numerical_data)
+        transformed_data = pca.transform(numerical_data)
+
+        # Create a dictionary with IDs as keys and transformed data as values for overview
+        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
         
-    def visualize_data(self, x, data):
-        plt.figure(figsize=(10,10))
-        plt.scatter(x[data['target'] == 0, 0], x[data['target'] == 0, 1], label=data['target_names'][1])
-        plt.scatter(x[data['target'] == 1, 0], x[data['target'] == 1, 1], label=data['target_names'][0])
-        plt.xlabel('pc1')
-        plt.ylabel('pc2')
-        plt.legend(title='Classes')
-        plt.show()
+        return result_dict
     
-    def apply_kmeans(self, data, n_clusters, seed):
-        self.kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=seed)
-        self.kmeans.fit(data)
-        return self.kmeans.labels_
-
-    def visualize_clusters(self, x, labels):
-        plt.figure(figsize=(10,10))
-        unique_labels = np.unique(labels)
-        for label in unique_labels:
-            plt.scatter(x[labels == label, 0], x[labels == label, 1], label=f'Cluster {label}', cmap='viridis')
-        plt.xlabel('pc1')
-        plt.ylabel('pc2')
-        plt.legend()
-        plt.show()
     
-    def get_closest_points_to_centroids(self, pca_data, cluster_labels):
-        centroids = self.kmeans.cluster_centers_
+    def apply_kmeans(self, **kwargs) -> Dict[str, List[int]]:
+        '''
+        Applies KMeans clustering on the input data.
 
-        closest_points = []
-        for i, c in enumerate(centroids):
-            # Get the points in this cluster
-            points_in_cluster = pca_data[cluster_labels == i]
-            
-            # Calculate the distance between the centroid and the points in the cluster
-            distances = distance.cdist([c], points_in_cluster)[0]
-            
-            # Get the index of the smallest distance
-            closest_point_idx = np.argmin(distances)
-            
-            # Get the closest point and add it to the list
-            closest_points.append(points_in_cluster[closest_point_idx])
+        Parameters:
+            data (dict[int, list[float]]): A dictionary where keys are IDs, and values are lists
+            of transformed data after PCA.
+            n_clusters (int): The number of clusters to form.
+            seed (int): The random seed for reproducibility.
 
-        return closest_points
-        
+        Returns:
+            Dict[str, List[int]]: A dictionary where keys are cluster names (e.g., "Cluster 1"),
+            and values are lists of corresponding IDs assigned to each cluster.
+        '''
+        data: dict[int, list[float]] = kwargs['data']
+        n_clusters: int = kwargs['n_clusters']
+        seed: int = kwargs['seed'] if 'seed' in kwargs else 42
+        kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=seed)
+        kmeans.fit(list(data.values()))
+        id_label_dict = dict(zip(data.keys(), kmeans.labels_))
+
+        label_id_dict = self._create_label_id_dict(id_label_dict)
+
+        return label_id_dict
+
+    def apply_hierarchical(self, data: Dict[int, List[float]], n_clusters: int) -> Dict[str, List[int]]:
+        '''
+        Applies Hierarchical Clustering on the input data. Same parameters return as KMeans
+        '''
+        hierarchical = AgglomerativeClustering(n_clusters=n_clusters)
+        labels = hierarchical.fit_predict(list(data.values()))
+
+        id_label_dict = dict(zip(data.keys(), labels))
+        label_id_dict = self._create_label_id_dict(id_label_dict)
+
+        return label_id_dict
+
+    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
+        '''
+        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
+        values are lists of corresponding IDs assigned to each cluster.
+
+        Parameters:
+            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
+            corresponding cluster labels.
+
+        Returns:
+            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
+            lists of IDs assigned to each cluster.
+        '''
+    
+        id_label_dict = dict(zip(data.keys(), self.kmeans.labels_))
+
+        label_id_dict = {}
+
+        for id_, cluster in id_label_dict.items():
+            cluster_name = f"Cluster {cluster + 1}"
+            if cluster_name not in label_id_dict:
+                label_id_dict[cluster_name] = []
+            label_id_dict[cluster_name].append(id_)
+
+        return label_id_dict
+    
+    def get_cluster_centers(self, **kwargs) -> dict[int, str]:
+        data: dict[int, list[float]] = kwargs['data']
+        center_images = {}
+        for i in range(len(self.kmeans.cluster_centers_)):
+            center = self.kmeans.cluster_centers_[i]
+            min_distance = float('inf')
+            center_image_id = None
+            for image_id, image_data in data.items():
+                dist = distance.euclidean(center, image_data)
+                if dist < min_distance:
+                    min_distance = dist
+                    center_image_id = image_id
+            center_images[f'Centroid Cluster {i}'] = center_image_id
+        return center_images
+
     def run(self, **kwargs):
         data = kwargs['data']
-        K = kwargs['K']
-        N = kwargs['N']
-        visualize = kwargs['visualize']
-        seed = kwargs['seed']
-        # df1 = kwargs['data']
-        data = self.load_dummy_data()
-        # print(f'label names = {data["target_names"]}')
-        # print(f'feature names = {data["feature_names"]}')
-        df1 = self.create_dataframe(data)
-        # print(f"data before PCA\n{df1.head()}")
-        Scaled_data = self.scale_data(df1)
-        pca_data = self.apply_pca(Scaled_data, N)
-        # print(f"data after PCA\n{pd.DataFrame(pca_data).head()}")
-        cluster_labels = self.apply_kmeans(pca_data, K, seed)
-        closest_points = self.get_closest_points_to_centroids(pca_data, cluster_labels)
-        if visualize:
-            self.visualize_data(pca_data, df1)
-            self.visualize_clusters(pca_data, cluster_labels)
-        return pca_data, cluster_labels, closest_points
-       
+        N_pca_d = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        n_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
+        pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
+        kmeans = self.apply_kmeans(data=pca_data, n_clusters=n_clusters, seed=42)
+        hierarchical = self.apply_hierarchical(pca_data, n_clusters)
+        centers = self.get_cluster_centers(data=pca_data)
+        return kmeans, centers
+    
 if __name__ == "__main__":
-    pca = SummerizationPCAKmeans()
-    x, y, z = pca.run(data=None, K=2, N=2, visualize=False, seed=42)
-    print(z)
-    # print(f'{x.shape} {y.shape}')
-    # df = pd.DataFrame(x, columns=['pc1', 'pc2'])
-    # df['Cluster'] = y
-    # print(df)
-    # cluster_counts = df['Cluster'].value_counts()
-    # print(cluster_counts)
+    data = torch.load("summarization_data.pth")
+    summarization = Summerization()
+    kmeans, centers = summarization.run(data=data, N_dimensions=2, N_clusters=4)
+    for key in sorted(kmeans.keys()):
+        print(f"{key}: {kmeans[key]}")
+    for key in sorted(centers.keys()):
+        print(f"{key}: {centers[key]}")

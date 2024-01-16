@@ -4,8 +4,11 @@ from PIL import Image
 from IMG2VEC_class import Img2Vec
 from torch import torch
 from pathlib import Path
+from torchvision import models
+import torch.nn as nn
 import csv
 import ast
+from torchvision import transforms
 
 class EmbeddingParent(GrandParent):
     def __init__(self) -> None:
@@ -70,6 +73,7 @@ class EmbeddingResNet(EmbeddingParent):
         path = 'U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + kwargs['img_path']
         
         image_embedding = self.Image2Vec_embedder_ResNet152(path)
+        image_embedding = self.Image2Vec_embedder_ResNet152(path)
 
         self.image_embeddings[str(kwargs['image_id'])] = image_embedding
 
@@ -84,18 +88,26 @@ class EmbeddingResNet(EmbeddingParent):
             
         return image_embedding
      
-if __name__ == "__main__":
-    embedder = EmbeddingResNet()
-    print(embedder.run(image_id=24, img_path='image_6_s_a.png', resnet=152))
 
 class EmbeddingResNet_2_0(EmbeddingParent):
     def __init__(self) -> None:
-        self.version: float | str = '2.0_WIP'
+        self.version: float | str = '2.0 WIP'
         self.name: str = "EmbeddingResNet 2.0" 
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
-        img2vec = Img2Vec(cuda=False, model='resnet152', layer='layer4', layer_output_size=2048, gpu=0)
-        # layer = 'layer_name' For advanced users, which layer of the model to extract the output from.   default: 'avgpool'
+        resnet152 = models.resnet152(pretrained=True)
+        resnet152.eval()
+
+        # Define the transformations
+        transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+
+        modules = list(resnet152.children())[:-2] #-2 without avgpool and fc
+        resnet152 = nn.Sequential(*modules)
+        
         img = Image.open(image).convert('RGB')
         vec = torch.tensor(img2vec.get_vec(img))
         return vec
@@ -114,9 +126,6 @@ class EmbeddingResNet_2_0(EmbeddingParent):
                     self.image_embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
             except:
                 self.image_embeddings = dict()
-            
-        if 'rerun' in kwargs and kwargs['rerun']:
-            self.image_embeddings = dict()
         
         if str(kwargs['image_id']) in self.image_embeddings:
             return self.image_embeddings[str(kwargs['image_id'])]
@@ -140,4 +149,3 @@ class EmbeddingResNet_2_0(EmbeddingParent):
                 csv_writer.writerow({'image_id': image_id, 'tensor': tensor.tolist()})
             
         return image_embedding
-

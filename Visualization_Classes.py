@@ -14,10 +14,18 @@ class VisualizationParent(GrandParent):
         return super().run(version, **kwargs)
 
 
-class VisualizationADDMETHODNAME(VisualizationParent):
+class VisualizationShow(VisualizationParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
         self.name: str = "ADD METHOD NAME"
 
     def run(self):
         pass
+
+# class VisualizationADDMETHODNAME(VisualizationParent):
+#     def __init__(self) -> None:
+#         self.version: float | str = 1.0
+#         self.name: str = "ADD METHOD NAME"
+
+#     def run(self):
+#         pass
