@@ -5,6 +5,8 @@ from sklearn.cluster import KMeans
 from torch import tensor
 import torch
 import os
+from scipy.spatial import distance
+
 
 
 # I don't know why, but otherwise I'm getting an error
@@ -57,6 +59,21 @@ class Summerization(SummarizationParent):
             label_id_dict[cluster_name].append(id_)
 
         return label_id_dict
+    
+    def get_cluster_centers(self, **kwargs) -> dict[int, str]:
+        data: dict[int, list[float]] = kwargs['data']
+        center_images = {}
+        for i in range(len(self.kmeans.cluster_centers_)):
+            center = self.kmeans.cluster_centers_[i]
+            min_distance = float('inf')
+            center_image_id = None
+            for image_id, image_data in data.items():
+                dist = distance.euclidean(center, image_data)
+                if dist < min_distance:
+                    min_distance = dist
+                    center_image_id = image_id
+            center_images[f'Centroid Cluster {i}'] = center_image_id
+        return center_images
 
     def run(self, **kwargs):
         data = kwargs['data']
@@ -64,12 +81,14 @@ class Summerization(SummarizationParent):
         n_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
         pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
         kmeans = self.apply_kmeans(data=pca_data, n_clusters=n_clusters, seed=42)
-        return kmeans
+        centers = self.get_cluster_centers(data=pca_data)
+        return kmeans, centers
     
 if __name__ == "__main__":
     data = torch.load("summarization_data.pth")
-    print(type(data))
     summarization = Summerization()
-    Kmeans = summarization.run(data=data, N_dimensions=2, N_clusters=4)
-    for key in sorted(Kmeans.keys()):
-        print(f"{key}: {Kmeans[key]}")
+    kmeans, centers = summarization.run(data=data, N_dimensions=2, N_clusters=4)
+    for key in sorted(kmeans.keys()):
+        print(f"{key}: {kmeans[key]}")
+    for key in sorted(centers.keys()):
+        print(f"{key}: {centers[key]}")
