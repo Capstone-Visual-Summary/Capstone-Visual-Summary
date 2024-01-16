@@ -1,16 +1,7 @@
-from os import close
 from typing import Union, List
-from sympy import Number
 from Grand_Parent import GrandParent
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-from scipy.spatial import distance
-from Embedding_Classes import EmbeddingResNet
-import pickle
 from torch import tensor
 import torch
 import os
@@ -35,7 +26,9 @@ class Summerization(SummarizationParent):
         self.version: float | str = 1.0
         self.name: str = "PCA_Kmeans"
         
-    def apply_pca(self, data: dict[int, tensor], N: int) -> dict[int, list[float]]:
+    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
+        data: dict[int, tensor] = kwargs['data']
+        N: int = kwargs['N_dimensions']
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
 
@@ -48,7 +41,11 @@ class Summerization(SummarizationParent):
         
         return result_dict
     
-    def apply_kmeans(self, data: dict[int, list[float]], n_clusters: int, seed: int) -> List[int]:
+    def apply_kmeans(self, **kwargs) -> List[int]:
+        data: dict[int, list[float]] = kwargs['data']
+        n_clusters: int = kwargs['n_clusters']
+        seed: int = kwargs['seed'] if 'seed' in kwargs else 42
+        
         self.kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=seed)
         self.kmeans.fit(list(data.values()))
         id_label_dict = dict(zip(data.keys(), self.kmeans.labels_))
@@ -64,12 +61,14 @@ class Summerization(SummarizationParent):
         return label_id_dict
 
     def run(self, **kwargs):
-        N_pca_d = 5
-        n_clusters = 3
-        pca_data = self.apply_pca(data, N_pca_d)
-        kmeans = self.apply_kmeans(pca_data, n_clusters=n_clusters, seed = 42)
+        N_pca_d = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        n_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
+        pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
+        kmeans = self.apply_kmeans(data=pca_data, n_clusters=n_clusters, seed=42)
         return kmeans
     
 if __name__ == "__main__":
     summarization = Summerization()
-    summarization.run()
+    Kmeans = summarization.run(N_dimensions=2, N_clusters=4)
+    for key in sorted(Kmeans.keys()):
+        print(f"{key}: {Kmeans[key]}")
