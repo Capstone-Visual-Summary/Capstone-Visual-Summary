@@ -59,10 +59,7 @@ class EmbeddingResNet(EmbeddingParent):
         
         path = 'U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + kwargs['img_path']
         
-        if kwargs['resnet'] == 50:
-            image_embedding = self.Image2Vec_embedder_ResNet50(path)
-        else:
-            image_embedding = self.Image2Vec_embedder_ResNet152(path)
+        image_embedding = self.Image2Vec_embedder_ResNet152(path)
 
         self.image_embeddings[str(kwargs['image_id'])] = image_embedding
 
