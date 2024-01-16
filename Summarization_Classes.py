@@ -107,7 +107,7 @@ class Summerization(SummarizationParent):
         name (str): The name of the clustering technique followed by PCA (e.g., "PCA_Kmeans_Hierical").
     '''
     def __init__(self) -> None:
-        self.version: float | str = '1.1 WIP'
+        self.version: float | str = '1.1WIP'
         self.name: str = "PCA_Kmeans_Hierical"
         
     def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
@@ -229,8 +229,19 @@ class Summerization(SummarizationParent):
 if __name__ == "__main__":
     data = torch.load("summarization_data.pth")
     summarization = SummarizationParent()
-    kmeans, centers = summarization.run(data=data, N_dimensions=2, N_clusters=4)
+    kmeans, centers = summarization.run(
+        summarization_version=1.0,
+        data=data,
+        N_dimensions=2,
+        N_clusters=4
+    )
+    
+    #Pretty printing the output
     for key in sorted(kmeans.keys()):
         print(f"{key}: {kmeans[key]}")
     for key in sorted(centers.keys()):
         print(f"{key}: {centers[key]}")
+
+#Example Output
+#{'Cluster 0': ['53568', '53570', '53572', '53574'], 'Cluster 1': ['53569', '53573'], 'Cluster 2': ['53571'], 'Cluster 3': ['53575']}
+#{'Centroid Cluster 0': '53570', 'Centroid Cluster 1': '53569', 'Centroid Cluster 2': '53571', 'Centroid Cluster 3': '53575'}
