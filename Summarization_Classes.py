@@ -2,9 +2,6 @@ from os import close
 from typing import Union, List, Dict
 from sympy import Number
 from Grand_Parent import GrandParent
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans, AgglomerativeClustering
@@ -18,8 +15,6 @@ import os
 
 # I don't know why, but otherwise I'm getting an error
 os.environ["LOKY_MAX_CPU_COUNT"] = "4" 
-
-data = torch.load("summarization_data.pth")
 
 class SummarizationParent(GrandParent):
     def __init__(self) -> None:
@@ -48,7 +43,7 @@ class Summerization(SummarizationParent):
         self.version: float | str = 1.0
         self.name: str = "PCA_Kmeans_Hierical"
         
-    def apply_pca(self, data: dict[int, tensor], N: int) -> dict[int, list[float]]:
+    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
         '''
         Applies Principal Component Analysis (PCA) on the input data.
 
@@ -60,6 +55,8 @@ class Summerization(SummarizationParent):
             dict[int, list[float]]: A dictionary where keys are IDs, and values are lists
             of transformed data after PCA.
         '''
+        data: dict[int, tensor] = kwargs['data']
+        N: int = kwargs['N_dimensions']
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
 
@@ -73,7 +70,7 @@ class Summerization(SummarizationParent):
         return result_dict
     
     
-    def apply_kmeans(self, data: Dict[int, List[float]], n_clusters: int, seed: int) -> Dict[str, List[int]]:
+    def apply_kmeans(self, **kwargs) -> Dict[str, List[int]]:
         '''
         Applies KMeans clustering on the input data.
 
@@ -87,6 +84,9 @@ class Summerization(SummarizationParent):
             Dict[str, List[int]]: A dictionary where keys are cluster names (e.g., "Cluster 1"),
             and values are lists of corresponding IDs assigned to each cluster.
         '''
+        data: dict[int, list[float]] = kwargs['data']
+        n_clusters: int = kwargs['n_clusters']
+        seed: int = kwargs['seed'] if 'seed' in kwargs else 42
         kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=seed)
         kmeans.fit(list(data.values()))
         id_label_dict = dict(zip(data.keys(), kmeans.labels_))
@@ -120,6 +120,9 @@ class Summerization(SummarizationParent):
             Dict[str, List[int]]: A dictionary where keys are cluster names and values are
             lists of IDs assigned to each cluster.
         '''
+    
+        id_label_dict = dict(zip(data.keys(), self.kmeans.labels_))
+
         label_id_dict = {}
 
         for id_, cluster in id_label_dict.items():
@@ -131,14 +134,19 @@ class Summerization(SummarizationParent):
         return label_id_dict
 
     def run(self, **kwargs):
-        N_pca_d = 5
-        n_clusters = 3
-        pca_data = self.apply_pca(data, N_pca_d)
-        kmeans = self.apply_kmeans(pca_data, n_clusters=n_clusters, seed = 42)
+        data = kwargs['data']
+        N_pca_d = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        n_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
+        pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
+        kmeans = self.apply_kmeans(data=pca_data, n_clusters=n_clusters, seed=42)
         hierarchical = self.apply_hierarchical(pca_data, n_clusters)
         print(kmeans, hierarchical)
         return kmeans
     
 if __name__ == "__main__":
+    data = torch.load("summarization_data.pth")
+    print(type(data))
     summarization = Summerization()
-    summarization.run()
+    Kmeans = summarization.run(data=data, N_dimensions=2, N_clusters=4)
+    for key in sorted(Kmeans.keys()):
+        print(f"{key}: {Kmeans[key]}")

@@ -45,20 +45,30 @@ def OneRUNtoRUNthemALL(**kwargs):
 			for index, path in enumerate(images.loc[(images['img_id'] == image_id), 'path']):
 				unique_img_id = int(image_id) * 4 + index
 				embeddings[str(unique_img_id)] = embedding_parent.run(embedder_version, image_id=unique_img_id, img_path=path, **kwargs) # list[float]
+	
+	# Specifiy the dictionary to a file
+	file_path = 'summarization_data.pth'
 
-	summarization_parent.run(summarization_version, visualize=True, data=embeddings, **kwargs)
+	# Save the dictionary to a file
+	torch.save(embeddings, file_path)
+ 
+	summarization_parent.run(summarization_version, data=embeddings, **kwargs)
 
 	visualization_parent.run(visualization_version, **kwargs)
+<<<<<<< HEAD
 
 	# Specify the file path
 	file_path = 'summarization_data.pth'
 
 	# Save the dictionary to a file
 	torch.save(embeddings, file_path)
+=======
+	print('DONE')
+>>>>>>> 709b205c01619e3b862da04a58697adf806d9e50
  
 
 OneRUNtoRUNthemALL(database_version = 1.0, start_hood = 1, stop_hood = 2, step_size = 1, 
 				   embedder_version = 1.0, rerun = False, 
-				   summarization_version = 1.0, K_images = 5, N_clusters = 10, N_dimensions = 10, 
+				   summarization_version = 1.0, K_images = 5, N_clusters = 3, N_dimensions = 5, 
 				   visualization_version = 1.0, visualize = True,
 				   file_name = '')
