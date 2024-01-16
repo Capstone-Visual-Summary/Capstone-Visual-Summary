@@ -28,15 +28,6 @@ class SummarizationParent(GrandParent):
         version = kwargs['summarization_version'] if 'summarization_version' in kwargs else -1
         
         return super().run(version, **kwargs)
-
-class SummarizationParent(GrandParent):
-    def __init__(self) -> None:
-        self.type = "Summerization"
-        self.children: dict[str, dict[str, Union[str, SummarizationParent]]] = dict()
-        self.children_names: set[int] = set()
-
-    def run(self, version = -1, **kwargs):
-        return super().run(version, **kwargs)
     
 class Summerization(SummarizationParent):
     def __init__(self) -> None:
