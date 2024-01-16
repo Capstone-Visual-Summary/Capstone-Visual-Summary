@@ -24,7 +24,7 @@ class DatabaseGeopandasPolygons(DatabaseParent):
         self.version: float | str = 1.0
         self.name: str = "Geopandas Polygons"
 
-    def run(self) -> tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]: # type: ignore
+    def run(self, **kwargs) -> tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]: # type: ignore
         images = gpd.read_file('Geo-JSON Files/image_info.geojson')
         neighbourhoods = gpd.read_file('Geo-JSON Files/neighbourhood_info.geojson')
         

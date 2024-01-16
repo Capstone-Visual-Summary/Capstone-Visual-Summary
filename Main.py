@@ -6,31 +6,60 @@ from Visualization_Classes import VisualizationParent
 from geopandas import GeoDataFrame
 import pandas as pd
 from tqdm import tqdm
+import torch
 
-database_parent = DatabaseParent()
-embedding_parent = EmbeddingParent()
-summarization_parent = SummarizationParent()
-visualization_parent = VisualizationParent()
+def OneRUNtoRUNthemALL(**kwargs):
+	print('START')
+	database_parent = DatabaseParent()
+	embedding_parent = EmbeddingParent()
+	summarization_parent = SummarizationParent()
+	visualization_parent = VisualizationParent()
 
-# database_parent.run()  # Grabs latsest version that is not WIP
-# database_parent.run("1.0")  # Grabs specific version
+	print('collecting kwargs')
+	database_version = kwargs['database_version'] if 'database_version' in kwargs else -1
+	embedder_version = kwargs['embedder_version'] if 'embedder_version' in kwargs else -1
+	summarization_version = kwargs['summarization_version'] if 'summarization_version' in kwargs else -1
+	visualization_version = kwargs['visualization_version'] if 'visualization_version' in kwargs else -1
 
-neighbourhood_images, images, neighbourhoods = database_parent.run(1.0) # type: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]
+	file_name = kwargs['file_name'] if 'file_name' in kwargs else 'Empty'
 
-embeddings = dict()
+	print('Database rev:', database_version, 'Embedder rev:', embedder_version, 'Summarization rev:', summarization_version, 'visualization rev:', visualization_version, )
 
-for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images)):
-	neighbourhood_id = '1680'
-	image_ids = neighbourhood_images[neighbourhood_id]
-	print(image_ids)
-	for image_id in image_ids:
-		for index, path in enumerate(images.loc[(images['img_id'] == image_id), 'path']):
-			unique_img_id = int(image_id) * 4 + index
-			embeddings[str(unique_img_id)] = embedding_parent.run(1.0, image_id=unique_img_id, img_path=path, resnet=152) # list[float]
+	neighbourhood_images, images, neighbourhoods = database_parent.run(database_version, **kwargs) # type: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]
+ 
+	start_hood = min(len(neighbourhood_images), max(0, kwargs['start_hood'])) if 'start_hood' in kwargs else 0
+	stop_hood = min(len(neighbourhood_images), max(0, kwargs['stop_hood'])) if 'stop_hood' in kwargs else len(neighbourhood_images)
+	step_size = step_size = min(len(neighbourhood_images), max(0, kwargs['step_size'])) if 'step_size' in kwargs else 1
+    
+	embeddings = dict()
+
+	wanted_hoods = [i for i in range(start_hood, stop_hood, step_size)]
+
+	for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images)):
+		if int(neighbourhood_id) not in range(start_hood, stop_hood, step_size):
+			continue
+
+		image_ids = neighbourhood_images[neighbourhood_id]
+  
+		for image_id in image_ids:
+			for index, path in enumerate(images.loc[(images['img_id'] == image_id), 'path']):
+				unique_img_id = int(image_id) * 4 + index
+				embeddings[str(unique_img_id)] = embedding_parent.run(embedder_version, image_id=unique_img_id, img_path=path, **kwargs) # list[float]
 	
-	break
+	# Specifiy the dictionary to a file
+	file_path = 'summarization_data.pth'
 
+	# Save the dictionary to a file
+	torch.save(embeddings, file_path)
+ 
+	summarization_parent.run(summarization_version, data=embeddings, **kwargs)
 
-df = pd.DataFrame.from_dict(embeddings).T
-df.to_pickle('embeddings_test.pkl')
-summarization_parent.run(K=3, N=3, visualize=False, data=df, seed=42)
+	visualization_parent.run(visualization_version, **kwargs)
+	print('DONE')
+ 
+
+OneRUNtoRUNthemALL(database_version = 1.0, start_hood = 1, stop_hood = 2, step_size = 1, 
+				   embedder_version = 1.0, rerun = False, 
+				   summarization_version = 1.0, K_images = 5, N_clusters = 3, N_dimensions = 5, 
+				   visualization_version = 1.0, visualize = True,
+				   file_name = '')

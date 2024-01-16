@@ -1,16 +1,16 @@
-from os import close
-from typing import Union
-
-from sympy import Number
+from typing import Union, List
 from Grand_Parent import GrandParent
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-from scipy.spatial import distance
-from Embedding_Classes import EmbeddingResNet
+from torch import tensor
+import torch
+import os
+
+
+# I don't know why, but otherwise I'm getting an error
+os.environ["LOKY_MAX_CPU_COUNT"] = "4" 
+
+data = torch.load("summarization_data.pth")
 
 class SummarizationParent(GrandParent):
     def __init__(self) -> None:
@@ -20,81 +20,55 @@ class SummarizationParent(GrandParent):
 
     def run(self, version = -1, **kwargs):
         return super().run(version, **kwargs)
-
-
-class SummerizationPCAKmeans(SummarizationParent):
+    
+class Summerization(SummarizationParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
         self.name: str = "PCA_Kmeans"
-
-    def scale_data(self, df1):
-        scaling = StandardScaler()
-        scaling.fit(df1)
-        Scaled_data = scaling.transform(df1)
-        return Scaled_data
-
-    def apply_pca(self, Scaled_data, N):
-        pca = PCA(n_components=N)
-        pca.fit(Scaled_data)
-        x = pca.transform(Scaled_data)
-        return x
-    
-    def apply_kmeans(self, data, n_clusters, seed):
-        self.kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=seed)
-        self.kmeans.fit(data)
-        return self.kmeans.labels_
-
-    def visualize_clusters(self, x, labels):
-        plt.figure(figsize=(10,10))
-        unique_labels = np.unique(labels)
-        for label in unique_labels:
-            plt.scatter(x[labels == label, 0], x[labels == label, 1], label=f'Cluster {label}', cmap='viridis')
-        plt.xlabel('pc1')
-        plt.ylabel('pc2')
-        plt.legend()
-        plt.show()
-    
-    def get_closest_points_to_centroids(self, pca_data, cluster_labels):
-        centroids = self.kmeans.cluster_centers_
-
-        closest_points = []
-        for i, c in enumerate(centroids):
-            # Get the points in this cluster
-            points_in_cluster = pca_data[cluster_labels == i]
-            
-            # Calculate the distance between the centroid and the points in the cluster
-            distances = distance.cdist([c], points_in_cluster)[0]
-            
-            # Get the index of the smallest distance
-            closest_point_idx = np.argmin(distances)
-            
-            # Get the closest point and add it to the list
-            closest_points.append(points_in_cluster[closest_point_idx])
-
-        return closest_points
         
+    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
+        data: dict[int, tensor] = kwargs['data']
+        N: int = kwargs['N_dimensions']
+        # Extract numerical values from tensors
+        numerical_data = torch.stack(list(data.values())).numpy()
+
+        pca = PCA(n_components=N)
+        pca.fit(numerical_data)
+        transformed_data = pca.transform(numerical_data)
+
+        # Create a dictionary with IDs as keys and transformed data as values for overview
+        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
+        
+        return result_dict
+    
+    def apply_kmeans(self, **kwargs) -> List[int]:
+        data: dict[int, list[float]] = kwargs['data']
+        n_clusters: int = kwargs['n_clusters']
+        seed: int = kwargs['seed'] if 'seed' in kwargs else 42
+        
+        self.kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=seed)
+        self.kmeans.fit(list(data.values()))
+        id_label_dict = dict(zip(data.keys(), self.kmeans.labels_))
+
+        label_id_dict = {}
+
+        for id_, cluster in id_label_dict.items():
+            cluster_name = f"Cluster {cluster}"
+            if cluster_name not in label_id_dict:
+                label_id_dict[cluster_name] = []
+            label_id_dict[cluster_name].append(id_)
+
+        return label_id_dict
+
     def run(self, **kwargs):
-        data = kwargs['data']
-        K = kwargs['K']
-        N = kwargs['N']
-        visualize = kwargs['visualize']
-        seed = kwargs['seed']
-        data = kwargs['data']
-        Scaled_data = self.scale_data(data)
-        # print(pd.DataFrame(Scaled_data))
-        pca_data = self.apply_pca(Scaled_data, N)
-        cluster_labels = self.apply_kmeans(pca_data, K, seed)
-        closest_points = self.get_closest_points_to_centroids(pca_data, cluster_labels)
-        if visualize:
-            self.visualize_clusters(pca_data, cluster_labels)
-        df = pd.DataFrame(pca_data, columns=['pc1', 'pc2'])
-        df['Cluster'] = cluster_labels
-        return df, closest_points
-       
+        N_pca_d = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        n_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
+        pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
+        kmeans = self.apply_kmeans(data=pca_data, n_clusters=n_clusters, seed=42)
+        return kmeans
+    
 if __name__ == "__main__":
-    pca = SummerizationPCAKmeans()
-    data = pd.read_pickle('embeddings_test.pkl')
-    print(data)
-    df, z = pca.run(data=data, K=3, N=5, visualize=True, seed=42)
-    print(df)
-    print(z)
+    summarization = Summerization()
+    Kmeans = summarization.run(N_dimensions=2, N_clusters=4)
+    for key in sorted(Kmeans.keys()):
+        print(f"{key}: {Kmeans[key]}")
