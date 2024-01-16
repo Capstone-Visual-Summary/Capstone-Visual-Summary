@@ -50,16 +50,7 @@ def OneRUNtoRUNthemALL(**kwargs):
 	summarization_parent.run(summarization_version, data=embeddings, **kwargs)
 
 	visualization_parent.run(visualization_version, **kwargs)
-<<<<<<< HEAD
-
-	# Specify the file path
-	file_path = 'summarization_data.pth'
-
-	# Save the dictionary to a file
-	torch.save(embeddings, file_path)
-=======
 	print('DONE')
->>>>>>> 709b205c01619e3b862da04a58697adf806d9e50
  
 
 OneRUNtoRUNthemALL(database_version = 1.0, start_hood = 1, stop_hood = 2, step_size = 1, 
