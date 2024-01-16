@@ -15,17 +15,13 @@ def OneRUNtoRUNthemALL(**kwargs):
 	summarization_parent = SummarizationParent()
 	visualization_parent = VisualizationParent()
 
-	print('collecting kwargs')
-	database_version = kwargs['database_version'] if 'database_version' in kwargs else -1
-	embedder_version = kwargs['embedder_version'] if 'embedder_version' in kwargs else -1
-	summarization_version = kwargs['summarization_version'] if 'summarization_version' in kwargs else -1
-	visualization_version = kwargs['visualization_version'] if 'visualization_version' in kwargs else -1
+	print('Database rev:', kwargs['database_version'] if 'database_version' in kwargs else 'Newest', 
+	   	'Embedder rev:', kwargs['embedder_version'] if 'embedder_version' in kwargs else 'Newest', 
+		'Summarization rev:', kwargs['summarization_version'] if 'summarization_version' in kwargs else 'Newest', 
+		'visualization rev:', kwargs['visualization_version'] if 'visualization_version' in kwargs else 'Newest', 
+		'file name:', kwargs['file_name'] if 'file_name' in kwargs else 'Empty')
 
-	file_name = kwargs['file_name'] if 'file_name' in kwargs else 'Empty'
-
-	print('Database rev:', database_version, 'Embedder rev:', embedder_version, 'Summarization rev:', summarization_version, 'visualization rev:', visualization_version, 'file name:', file_name)
-
-	neighbourhood_images, images, neighbourhoods = database_parent.run(database_version, **kwargs) # type: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]
+	neighbourhood_images, images, neighbourhoods = database_parent.run(**kwargs) # type: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]
  
 	start_hood = min(len(neighbourhood_images), max(0, kwargs['start_hood'])) if 'start_hood' in kwargs else 0
 	stop_hood = min(len(neighbourhood_images), max(0, kwargs['stop_hood'])) if 'stop_hood' in kwargs else len(neighbourhood_images)
@@ -47,7 +43,7 @@ def OneRUNtoRUNthemALL(**kwargs):
 		for image_id in image_ids:
 			for index, path in enumerate(images.loc[(images['img_id'] == image_id), 'path']):
 				unique_img_id = int(image_id) * 4 + index
-				embeddings[str(unique_img_id)] = embedding_parent.run(embedder_version, image_id=unique_img_id, img_path=path, **kwargs) # list[float]
+				embeddings[str(unique_img_id)] = embedding_parent.run(image_id=unique_img_id, img_path=path, **kwargs) # list[float]
 		
 		embedding_neighbourhood[neighbourhood_id] = embeddings
 
@@ -55,9 +51,9 @@ def OneRUNtoRUNthemALL(**kwargs):
 
 	for neighbourhood_id in embedding_neighbourhood:
 		# summaries is of type: tuple[dict[str, list[str]], dict[str, str]], so tuple[clusters, centroids]
-		summaries[str(neighbourhood_id)] = summarization_parent.run(summarization_version, data=embedding_neighbourhood[str(neighbourhood_id)], **kwargs)
+		summaries[str(neighbourhood_id)] = summarization_parent.run(data=embedding_neighbourhood[str(neighbourhood_id)], **kwargs)
 
-	visualization_parent.run(visualization_version, **kwargs)
+	visualization_parent.run(**kwargs)
 	print('DONE')
  
 

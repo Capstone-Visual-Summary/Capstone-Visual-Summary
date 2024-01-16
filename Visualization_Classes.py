@@ -27,5 +27,5 @@ class VisualizationShow(VisualizationParent):
 #         self.version: float | str = 1.0
 #         self.name: str = "ADD METHOD NAME"
 
-#     def run(self):
+#     def run(self, **kwargs):
 #         pass
