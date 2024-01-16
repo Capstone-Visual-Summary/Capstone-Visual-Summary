@@ -10,8 +10,6 @@ import os
 # I don't know why, but otherwise I'm getting an error
 os.environ["LOKY_MAX_CPU_COUNT"] = "4" 
 
-data = torch.load("summarization_data.pth")
-
 class SummarizationParent(GrandParent):
     def __init__(self) -> None:
         self.type = "Summerization"
@@ -61,6 +59,7 @@ class Summerization(SummarizationParent):
         return label_id_dict
 
     def run(self, **kwargs):
+        data = kwargs['data']
         N_pca_d = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
         n_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
         pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
@@ -68,7 +67,9 @@ class Summerization(SummarizationParent):
         return kmeans
     
 if __name__ == "__main__":
+    data = torch.load("summarization_data.pth")
+    print(type(data))
     summarization = Summerization()
-    Kmeans = summarization.run(N_dimensions=2, N_clusters=4)
+    Kmeans = summarization.run(data=data, N_dimensions=2, N_clusters=4)
     for key in sorted(Kmeans.keys()):
         print(f"{key}: {Kmeans[key]}")
