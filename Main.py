@@ -6,6 +6,7 @@ from Visualization_Classes import VisualizationParent
 from geopandas import GeoDataFrame
 import pandas as pd
 from tqdm import tqdm
+import torch
 
 def OneRUNtoRUNthemALL(**kwargs):
 	print('START')
@@ -49,11 +50,12 @@ def OneRUNtoRUNthemALL(**kwargs):
 	summarization_parent.run(summarization_version, data=embeddings, **kwargs)
 
 	visualization_parent.run(visualization_version, **kwargs)
+	print('DONE')
  
 
 OneRUNtoRUNthemALL(database_version = 1.0, start_hood = 1, stop_hood = 2, step_size = 1, 
 				   embedder_version = 1.0, rerun = False, 
-				   summarization_version = 1.0, K_images = 5, N_clusters = 10, N_dimensions = 10, 
+				   summarization_version = 1.0, K_images = 5, N_clusters = 3, N_dimensions = 5, 
 				   visualization_version = 1.0, visualize = True,
 				   file_name = '')
 
