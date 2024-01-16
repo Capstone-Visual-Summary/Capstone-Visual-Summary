@@ -30,15 +30,17 @@ def OneRUNtoRUNthemALL(**kwargs):
 	start_hood = min(len(neighbourhood_images), max(0, kwargs['start_hood'])) if 'start_hood' in kwargs else 0
 	stop_hood = min(len(neighbourhood_images), max(0, kwargs['stop_hood'])) if 'stop_hood' in kwargs else len(neighbourhood_images)
 	step_size = step_size = min(len(neighbourhood_images), max(0, kwargs['step_size'])) if 'step_size' in kwargs else 1
-    
-	embeddings = dict()
 
 	wanted_hoods = [i for i in range(start_hood, stop_hood, step_size)]
 	print('Using neighbourhood ids:', wanted_hoods)
 
+	embedding_neighbourhood = dict()
+
 	for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images)):
 		if int(neighbourhood_id) not in range(start_hood, stop_hood, step_size):
 			continue
+
+		embeddings = dict()
 
 		image_ids = neighbourhood_images[neighbourhood_id]
   
@@ -46,8 +48,14 @@ def OneRUNtoRUNthemALL(**kwargs):
 			for index, path in enumerate(images.loc[(images['img_id'] == image_id), 'path']):
 				unique_img_id = int(image_id) * 4 + index
 				embeddings[str(unique_img_id)] = embedding_parent.run(embedder_version, image_id=unique_img_id, img_path=path, **kwargs) # list[float]
+		
+		embedding_neighbourhood[neighbourhood_id] = embeddings
 
-	summarization_parent.run(summarization_version, data=embeddings, **kwargs)
+	summaries = dict()
+
+	for neighbourhood_id in embedding_neighbourhood:
+		# summaries is of type: tuple[dict[str, list[str]], dict[str, str]], so tuple[clusters, centroids]
+		summaries[str(neighbourhood_id)] = summarization_parent.run(summarization_version, data=embedding_neighbourhood[str(neighbourhood_id)], **kwargs)
 
 	visualization_parent.run(visualization_version, **kwargs)
 	print('DONE')
