@@ -35,23 +35,6 @@ def OneRUNtoRUNthemALL(**kwargs):
 
 	wanted_hoods = [i for i in range(start_hood, stop_hood, step_size)]
 
-for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images)):
-	neighbourhood_id = '1680'
-	image_ids = neighbourhood_images[neighbourhood_id]
-	print(image_ids)
-	for image_id in image_ids:
-		for index, path in enumerate(images.loc[(images['img_id'] == image_id), 'path']):
-			unique_img_id = int(image_id) * 4 + index
-			embeddings[str(unique_img_id)] = embedding_parent.run(1.0, image_id=unique_img_id, img_path=path, resnet=152) # list[float]
-	
-	break
-
-# Specify the file path
-file_path = 'summarization_data.pth'
-
-# Save the dictionary to a file
-torch.save(embeddings, file_path)
-
 	for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images)):
 		if int(neighbourhood_id) not in range(start_hood, stop_hood, step_size):
 			continue
@@ -62,7 +45,13 @@ torch.save(embeddings, file_path)
 			for index, path in enumerate(images.loc[(images['img_id'] == image_id), 'path']):
 				unique_img_id = int(image_id) * 4 + index
 				embeddings[str(unique_img_id)] = embedding_parent.run(embedder_version, image_id=unique_img_id, img_path=path, **kwargs) # list[float]
+	
+	# Specifiy the dictionary to a file
+	file_path = 'summarization_data.pth'
 
+	# Save the dictionary to a file
+	torch.save(embeddings, file_path)
+ 
 	summarization_parent.run(summarization_version, visualize=True, data=embeddings, **kwargs)
 
 	visualization_parent.run(visualization_version, **kwargs)
