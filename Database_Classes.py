@@ -16,7 +16,7 @@ class DatabaseParent(GrandParent):
         self.children_names: set[int] = set()
 
     def run(self, **kwargs):
-        version = kwargs['databse_version'] if 'database_version' in kwargs else -1
+        version = kwargs['database_version'] if 'database_version' in kwargs else -1
         
         return super().run(version, **kwargs)
 
