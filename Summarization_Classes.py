@@ -1,6 +1,10 @@
+from cgi import test
 from os import close
+import ast
+import torch
 from typing import Union, List, Dict
 from Grand_Parent import GrandParent
+import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from scipy.spatial import distance
@@ -223,6 +227,12 @@ class Summerization(SummarizationParent):
 
 
 if __name__ == "__main__":
+    
+    # test_data = pd.read_csv('Embedding Files\Embeddings_1_0_0.csv')
+    # test_data_dict = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}    
+    # print(type(test_data_dict[53568]))
+    # print(test_data.head())
+    
     data = torch.load("summarization_data.pth")
     summarization = SummarizationParent()
     kmeans, centers = summarization.run(
