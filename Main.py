@@ -6,6 +6,7 @@ from Visualization_Classes import VisualizationParent
 from geopandas import GeoDataFrame
 import pandas as pd
 from tqdm import tqdm
+import torch
 
 database_parent = DatabaseParent()
 embedding_parent = EmbeddingParent()
@@ -30,7 +31,9 @@ for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(
 	
 	break
 
+# Specify the file path
+file_path = 'summarization_data.pth'
 
-df = pd.DataFrame.from_dict(embeddings).T
-df.to_pickle('embeddings_test.pkl')
-summarization_parent.run(K=3, N=3, visualize=False, data=df, seed=42)
+# Save the dictionary to a file
+torch.save(embeddings, file_path)
+
