@@ -1,7 +1,4 @@
-from cgi import test
-from os import close
 import ast
-from sympy import per
 import torch
 from typing import Union, List, Dict
 from Grand_Parent import GrandParent
@@ -13,7 +10,6 @@ from torch import tensor
 import torch
 import os
 from scipy.spatial import distance
-import numpy as np
 from sklearn.manifold import TSNE
 
 
@@ -55,21 +51,6 @@ class SummarizationParent(GrandParent):
             label_id_dict[cluster_name].append(id_)
 
         return label_id_dict
-    
-    def get_cluster_centers(self, **kwargs) -> dict[int, str]:
-        data: dict[int, list[float]] = kwargs['data']
-        center_images = {}
-        for i in range(len(self.kmeans.cluster_centers_)):
-            center = self.kmeans.cluster_centers_[i]
-            min_distance = float('inf')
-            center_image_id = None
-            for image_id, image_data in data.items():
-                dist = distance.euclidean(center, image_data)
-                if dist < min_distance:
-                    min_distance = dist
-                    center_image_id = image_id
-            center_images[f'Centroid Cluster {i}'] = center_image_id
-        return center_images
 
 
 ########################################## 1.0 ##########################################################
@@ -120,6 +101,21 @@ class SummerizationKmeans(SummarizationParent):
         label_id_dict = self._create_label_id_dict(id_label_dict)
 
         return label_id_dict
+    
+    def get_cluster_centers(self, **kwargs) -> dict[int, str]:
+        data: dict[int, list[float]] = kwargs['data']
+        center_images = {}
+        for i in range(len(self.kmeans.cluster_centers_)):
+            center = self.kmeans.cluster_centers_[i]
+            min_distance = float('inf')
+            center_image_id = None
+            for image_id, image_data in data.items():
+                dist = distance.euclidean(center, image_data)
+                if dist < min_distance:
+                    min_distance = dist
+                    center_image_id = image_id
+            center_images[f'Centroid Cluster {i}'] = center_image_id
+        return center_images
 
     def run(self, **kwargs):
         data = kwargs['data']
@@ -189,14 +185,29 @@ class SummerizationHierarchy(SummarizationParent):
         '''
         data: dict[int, list[float]] = kwargs['data']
         n_clusters: int = kwargs['n_clusters']
-        self.hierarchical = AgglomerativeClustering(n_clusters=n_clusters)
-        self.hierarchical.fit_predict(list(data.values()))
-        # self.hierarchical = hierarchical  # Set the kmeans attribute
+        hierarchical = AgglomerativeClustering(n_clusters=n_clusters)
+        hierarchical.fit_predict(list(data.values()))
+        self.hierarchical = hierarchical  # Set the kmeans attribute
         id_label_dict = dict(zip(data.keys(), self.hierarchical.labels_))
 
         label_id_dict = self._create_label_id_dict(id_label_dict)
 
         return label_id_dict
+    
+    def get_cluster_centers(self, **kwargs) -> dict[int, str]:
+        data: dict[int, list[float]] = kwargs['data']
+        center_images = {}
+        for i in range(len(self.kmeans.cluster_centers_)):
+            center = self.kmeans.cluster_centers_[i]
+            min_distance = float('inf')
+            center_image_id = None
+            for image_id, image_data in data.items():
+                dist = distance.euclidean(center, image_data)
+                if dist < min_distance:
+                    min_distance = dist
+                    center_image_id = image_id
+            center_images[f'Centroid Cluster {i}'] = center_image_id
+        return center_images
 
     def run(self, **kwargs):
         data = kwargs['data']
@@ -271,6 +282,21 @@ class SummerizationTSNE(SummarizationParent):
         label_id_dict = self._create_label_id_dict(id_label_dict)
 
         return label_id_dict
+    
+    def get_cluster_centers(self, **kwargs) -> dict[int, str]:
+        data: dict[int, list[float]] = kwargs['data']
+        center_images = {}
+        for i in range(len(self.kmeans.cluster_centers_)):
+            center = self.kmeans.cluster_centers_[i]
+            min_distance = float('inf')
+            center_image_id = None
+            for image_id, image_data in data.items():
+                dist = distance.euclidean(center, image_data)
+                if dist < min_distance:
+                    min_distance = dist
+                    center_image_id = image_id
+            center_images[f'Centroid Cluster {i}'] = center_image_id
+        return center_images
 
     def run(self, **kwargs):
         data = kwargs['data']
