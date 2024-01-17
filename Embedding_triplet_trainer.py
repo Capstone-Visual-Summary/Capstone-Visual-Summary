@@ -5,6 +5,9 @@ from torch.utils.data import DataLoader
 from torchvision import models, transforms
 from PIL import Image
 from torch.utils.data import Dataset
+import os
+import random
+
 
 num_epochs = 10  # Define the number of epochs
 embedding_dimension = 128
@@ -40,37 +43,57 @@ resnet152 = ResNet152Embedding()
 resnet152 = resnet152.to(device)
     
 # Define your transforms, dataset and dataloader here
-# Example transformation
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-class TripletStreetViewDataset(Dataset):
-    # Initialize dataset with lists of anchor, positive, and negative image file paths
-    def __init__(self, anchor_images, positive_images, negative_images, transform=None):
-        self.anchor_images = anchor_images
-        self.positive_images = positive_images
-        self.negative_images = negative_images
+class StreetViewTripletDataset(Dataset):
+    def __init__(self, root_dir, transform=None):
+        """
+        Args:
+            root_dir (string): Directory with all the locations.
+            transform (callable, optional): Optional transform to be applied on a sample.
+        """
+        self.root_dir = root_dir
         self.transform = transform
-
-    def __getitem__(self, index):
-        anchor = Image.open(self.anchor_images[index]).convert('RGB')
-        positive = Image.open(self.positive_images[index]).convert('RGB')
-        negative = Image.open(self.negative_images[index]).convert('RGB')
-        if self.transform:
-            anchor = self.transform(anchor)
-            positive = self.transform(positive)
-            negative = self.transform(negative)
-        return anchor, positive, negative
+        self.locations = os.listdir(root_dir)
+        self.images = {location: os.listdir(os.path.join(root_dir, location)) for location in self.locations}
 
     def __len__(self):
-        return len(self.anchor_images)
+        return len(self.locations)
+
+    def __getitem__(self, idx):
+        location = self.locations[idx]
+        location_images = self.images[location]
+        
+        # Choose a random anchor and positive image
+        anchor_img_name, positive_img_name = random.sample(location_images, 2)
+        anchor_img_path = os.path.join(self.root_dir, location, anchor_img_name)
+        positive_img_path = os.path.join(self.root_dir, location, positive_img_name)
+        
+        # Choose a random negative location
+        negative_location = random.choice([loc for loc in self.locations if loc != location])
+        negative_img_name = random.choice(self.images[negative_location])
+        negative_img_path = os.path.join(self.root_dir, negative_location, negative_img_name)
+        
+        # Load images
+        anchor_img = Image.open(anchor_img_path).convert('RGB')
+        positive_img = Image.open(positive_img_path).convert('RGB')
+        negative_img = Image.open(negative_img_path).convert('RGB')
+        
+        # Apply transformations
+        if self.transform:
+            anchor_img = self.transform(anchor_img)
+            positive_img = self.transform(positive_img)
+            negative_img = self.transform(negative_img)
+
+        return anchor_img, positive_img, negative_img
 
 #dataset initialization
-dataset = TripletStreetViewDataset(anchor_images, positive_images, negative_images, transform=transform)
-dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+street_view_dataset = StreetViewTripletDataset(root_dir='/path/to/dataset', transform=transform)
+dataloader = DataLoader(street_view_dataset, batch_size=32, shuffle=True)
 # Assuming you have a dataloader 'dataloader' and the resnet152  resnet152'
 optimizer = torch.optim.Adam(resnet152.parameters(), lr=0.0001)
 criterion = TripletLoss(margin=1.0)
