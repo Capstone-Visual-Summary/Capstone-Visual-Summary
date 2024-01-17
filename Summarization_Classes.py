@@ -13,6 +13,7 @@ import torch
 import os
 from scipy.spatial import distance
 import numpy as np
+from sklearn.manifold import TSNE
 
 
 
@@ -263,7 +264,115 @@ class SummerizationHierarchy(SummarizationParent):
         return hierarchical, centers
 
 
+########################################## 2.0 ##########################################################
 
+
+class SummerizationTSNE(SummarizationParent):
+    def __init__(self) -> None:
+        self.version: float | str = 2.0
+        self.name: str = "TSNE_Kmeans"
+        
+    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
+        data: dict[int, tensor] = kwargs['data']
+        N: int = kwargs['N_dimensions']
+        # Extract numerical values from tensors
+        numerical_data = torch.stack(list(data.values())).numpy()
+
+        pca = PCA(n_components=N)
+        transformed_data = pca.fit_transform(numerical_data)
+
+        # Create a dictionary with IDs as keys and transformed data as values for overview
+        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
+        
+        return result_dict
+    
+    def apply_TSNE(self, **kwargs) -> dict[int, list[float]]:
+        data: dict[int, tensor] = kwargs['data']
+        N: int = kwargs['N_dimensions']
+        # Extract numerical values from tensors
+        numerical_data = torch.stack(list(data.values())).numpy()
+
+        tsne = TSNE(n_components=N, random_state=42)
+        transformed_data = tsne.fit_transform(numerical_data)
+
+        # Create a dictionary with IDs as keys and transformed data as values for overview
+        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
+        
+        return result_dict
+    
+    def apply_kmeans(self, **kwargs) -> Dict[str, List[int]]:
+        '''
+        Applies KMeans clustering on the input data.
+
+        Parameters:
+            data (dict[int, list[float]]): A dictionary where keys are IDs, and values are lists
+            of transformed data after PCA.
+            n_clusters (int): The number of clusters to form.
+            seed (int): The random seed for reproducibility.
+
+        Returns:
+            Dict[str, List[int]]: A dictionary where keys are cluster names (e.g., "Cluster 1"),
+            and values are lists of corresponding IDs assigned to each cluster.
+        '''
+        data: dict[int, list[float]] = kwargs['data']
+        N_clusters: int = kwargs['N_clusters']
+        seed: int = kwargs['seed'] if 'seed' in kwargs else 42
+        kmeans = KMeans(n_clusters=N_clusters, n_init=10, random_state=seed)
+        kmeans.fit(list(data.values()))
+        self.kmeans = kmeans  # Set the kmeans attribute
+        id_label_dict = dict(zip(data.keys(), kmeans.labels_))
+
+        label_id_dict = self._create_label_id_dict(id_label_dict)
+
+        return label_id_dict
+        
+    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
+        '''
+        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
+        values are lists of corresponding IDs assigned to each cluster.
+
+        Parameters:
+            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
+            corresponding cluster labels.
+
+        Returns:
+            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
+            lists of IDs assigned to each cluster.
+        '''
+    
+        label_id_dict = {}
+
+        for id_, cluster in id_label_dict.items():
+            cluster_name = f"Cluster {cluster + 1}"
+            if cluster_name not in label_id_dict:
+                label_id_dict[cluster_name] = []
+            label_id_dict[cluster_name].append(id_)
+
+        return label_id_dict
+    
+    def get_cluster_centers(self, **kwargs) -> dict[int, str]:
+        data: dict[int, list[float]] = kwargs['data']
+        center_images = {}
+        for i in range(len(self.kmeans.cluster_centers_)):
+            center = self.kmeans.cluster_centers_[i]
+            min_distance = float('inf')
+            center_image_id = None
+            for image_id, image_data in data.items():
+                dist = distance.euclidean(center, image_data)
+                if dist < min_distance:
+                    min_distance = dist
+                    center_image_id = image_id
+            center_images[f'Centroid Cluster {i}'] = center_image_id
+        return center_images
+
+    def run(self, **kwargs):
+        data = kwargs['data']
+        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        N_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
+        TSNE_data = self.apply_TSNE(data=data, N_dimensions=N_dimensions)
+        kmeans = self.apply_kmeans(data=TSNE_data, N_clusters=N_clusters, seed=42)
+        centers = self.get_cluster_centers(data=TSNE_data)
+        return kmeans, centers
 
 if __name__ == "__main__":
     
@@ -272,9 +381,9 @@ if __name__ == "__main__":
     
     summarization = SummarizationParent()
     all_points, centers = summarization.run(
-        summarization_version=1.0,
+        summarization_version=2.0,
         data=data,
-        N_dimensions=5,
+        N_dimensions=3,
         N_clusters=4
     )
     
