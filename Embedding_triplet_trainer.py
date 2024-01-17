@@ -7,7 +7,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 import os
 import random
-
+import matplotlib.pyplot as plt
 
 num_epochs = 10  # Define the number of epochs
 embedding_dimension = 128
@@ -98,8 +98,11 @@ dataloader = DataLoader(street_view_dataset, batch_size=32, shuffle=True)
 optimizer = torch.optim.Adam(resnet152.parameters(), lr=0.0001)
 criterion = TripletLoss(margin=1.0)
 
+epoch_losses = []  # List to store loss of each epoch
+
 for epoch in range(num_epochs):
     resnet152.train()
+    total_loss = 0
     for batch_idx, (anchor, positive, negative) in enumerate(dataloader):
         anchor, positive, negative = anchor.to(device), positive.to(device), negative.to(device)
         optimizer.zero_grad()
@@ -109,7 +112,22 @@ for epoch in range(num_epochs):
         loss = criterion(anchor_embedding, positive_embedding, negative_embedding)
         loss.backward()
         optimizer.step()
-    print(f'Epoch {epoch+1}/{num_epochs}, Loss: {loss.item()}')
+        total_loss += loss.item()
+    
+    average_loss = total_loss / len(dataloader)
+    epoch_losses.append(average_loss)
+    print(f'Epoch {epoch+1}/{num_epochs}, Average Loss: {average_loss}')
 
 # Save the model
 torch.save(resnet152.state_dict(), 'resnet152_trained_triplet.pt')
+
+#plot the loss curve
+# Assuming epoch_losses contains the average loss of each epoch
+plt.figure(figsize=(10, 6))
+plt.plot(range(1, num_epochs + 1), epoch_losses, marker='o', linestyle='-', color='blue')
+plt.title('Training Loss Curve')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.xticks(range(1, num_epochs + 1))
+plt.grid(True)
+plt.show()
