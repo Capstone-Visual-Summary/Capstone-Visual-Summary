@@ -10,6 +10,7 @@ from torch import tensor
 import torch
 import os
 from scipy.spatial import distance
+import numpy as np
 from sklearn.manifold import TSNE
 
 
@@ -27,30 +28,6 @@ class SummarizationParent(GrandParent):
         version = kwargs['summarization_version'] if 'summarization_version' in kwargs else -1
         
         return super().run(version, **kwargs)
-    
-    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
-        '''
-        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
-        values are lists of corresponding IDs assigned to each cluster.
-
-        Parameters:
-            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
-            corresponding cluster labels.
-
-        Returns:
-            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
-            lists of IDs assigned to each cluster.
-        '''
-    
-        label_id_dict = {}
-
-        for id_, cluster in id_label_dict.items():
-            cluster_name = f"Cluster {cluster + 1}"
-            if cluster_name not in label_id_dict:
-                label_id_dict[cluster_name] = []
-            label_id_dict[cluster_name].append(id_)
-
-        return label_id_dict
 
 
 ########################################## 1.0 ##########################################################
@@ -99,6 +76,30 @@ class SummerizationKmeans(SummarizationParent):
         id_label_dict = dict(zip(data.keys(), kmeans.labels_))
 
         label_id_dict = self._create_label_id_dict(id_label_dict)
+
+        return label_id_dict
+        
+    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
+        '''
+        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
+        values are lists of corresponding IDs assigned to each cluster.
+
+        Parameters:
+            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
+            corresponding cluster labels.
+
+        Returns:
+            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
+            lists of IDs assigned to each cluster.
+        '''
+    
+        label_id_dict = {}
+
+        for id_, cluster in id_label_dict.items():
+            cluster_name = f"Cluster {cluster + 1}"
+            if cluster_name not in label_id_dict:
+                label_id_dict[cluster_name] = []
+            label_id_dict[cluster_name].append(id_)
 
         return label_id_dict
     
@@ -185,29 +186,71 @@ class SummerizationHierarchy(SummarizationParent):
         '''
         data: dict[int, list[float]] = kwargs['data']
         n_clusters: int = kwargs['n_clusters']
-        hierarchical = AgglomerativeClustering(n_clusters=n_clusters)
-        hierarchical.fit_predict(list(data.values()))
-        self.hierarchical = hierarchical  # Set the kmeans attribute
+        self.hierarchical = AgglomerativeClustering(n_clusters=n_clusters)
+        self.hierarchical.fit_predict(list(data.values()))
+        # self.hierarchical = hierarchical  # Set the kmeans attribute
         id_label_dict = dict(zip(data.keys(), self.hierarchical.labels_))
 
         label_id_dict = self._create_label_id_dict(id_label_dict)
 
         return label_id_dict
+
+    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
+        '''
+        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
+        values are lists of corresponding IDs assigned to each cluster.
+
+        Parameters:
+            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
+            corresponding cluster labels.
+
+        Returns:
+            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
+            lists of IDs assigned to each cluster.
+        '''
+    
+        label_id_dict = {}
+
+        for id_, cluster in id_label_dict.items():
+            cluster_name = f"Cluster {cluster + 1}"
+            if cluster_name not in label_id_dict:
+                label_id_dict[cluster_name] = []
+            label_id_dict[cluster_name].append(id_)
+
+        return label_id_dict
     
     def get_cluster_centers(self, **kwargs) -> dict[int, str]:
+        '''
+        Calculates representative cluster centers for each cluster in the hierarchical clustering results.
+
+        Parameters:
+            **kwargs: Additional keyword arguments.
+                - data (dict[int, list[float]]): A dictionary where keys are image IDs, and values are lists
+                representing the transformed data after PCA.
+        
+        Returns:
+            dict[int, str]: A dictionary where keys are cluster names (e.g., "Mean Center Cluster 1"),
+            and values are image IDs representing the closest data point to the mean center of each cluster.
+        '''
         data: dict[int, list[float]] = kwargs['data']
-        center_images = {}
-        for i in range(len(self.kmeans.cluster_centers_)):
-            center = self.kmeans.cluster_centers_[i]
+        hierarchical_labels = self.hierarchical.labels_
+
+        cluster_centers = {}
+        for cluster_id in np.unique(hierarchical_labels):
+            cluster_points = [data[image_id] for image_id, label in zip(data.keys(), hierarchical_labels) if label == cluster_id]
+            mean_center = np.mean(cluster_points, axis=0)
+            
             min_distance = float('inf')
             center_image_id = None
             for image_id, image_data in data.items():
-                dist = distance.euclidean(center, image_data)
+                dist = distance.euclidean(mean_center, image_data)
                 if dist < min_distance:
                     min_distance = dist
                     center_image_id = image_id
-            center_images[f'Centroid Cluster {i}'] = center_image_id
-        return center_images
+
+            cluster_centers[f'Mean Center Cluster {cluster_id + 1}'] = center_image_id
+
+        return cluster_centers
 
     def run(self, **kwargs):
         data = kwargs['data']
@@ -223,33 +266,19 @@ class SummerizationHierarchy(SummarizationParent):
 
 
 class SummerizationTSNE(SummarizationParent):
-    
     def __init__(self) -> None:
         self.version: float | str = 2.0
         self.name: str = "TSNE_Kmeans"
     
     def apply_TSNE(self, **kwargs) -> dict[int, list[float]]:
-        '''
-        Applies t-distributed stochastic neighbor embedding (t-SNE) on the input data.
-
-        Parameters:
-            data (dict[int, tensor]): A dictionary where keys are IDs, and values are tensors.
-            N (int): The number of dimensions to retain.
-
-        Returns:
-            dict[int, list[float]]: A dictionary where keys are IDs, and values are lists
-            of transformed data after TSNE.
-        '''
         data: dict[int, tensor] = kwargs['data']
-        seed: int = kwargs['seed'] if 'seed' in kwargs else 42
         N: int = kwargs['N_dimensions']
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
-        
-        # Adjuist perplexity if there are few samples
+        # Adjust perprexity if there are to few samples
         perplexity = 30 if len(numerical_data) > 30 else len(numerical_data) - 1
 
-        tsne = TSNE(n_components=N, random_state=seed, perplexity=perplexity)
+        tsne = TSNE(n_components=N, random_state=42, perplexity=perplexity)
         transformed_data = tsne.fit_transform(numerical_data)
 
         # Create a dictionary with IDs as keys and transformed data as values for overview
@@ -282,6 +311,30 @@ class SummerizationTSNE(SummarizationParent):
         label_id_dict = self._create_label_id_dict(id_label_dict)
 
         return label_id_dict
+        
+    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
+        '''
+        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
+        values are lists of corresponding IDs assigned to each cluster.
+
+        Parameters:
+            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
+            corresponding cluster labels.
+
+        Returns:
+            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
+            lists of IDs assigned to each cluster.
+        '''
+    
+        label_id_dict = {}
+
+        for id_, cluster in id_label_dict.items():
+            cluster_name = f"Cluster {cluster + 1}"
+            if cluster_name not in label_id_dict:
+                label_id_dict[cluster_name] = []
+            label_id_dict[cluster_name].append(id_)
+
+        return label_id_dict
     
     def get_cluster_centers(self, **kwargs) -> dict[int, str]:
         data: dict[int, list[float]] = kwargs['data']
@@ -302,7 +355,7 @@ class SummerizationTSNE(SummarizationParent):
         data = kwargs['data']
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
         N_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
-        TSNE_data = self.apply_TSNE(data=data, N_dimensions=N_dimensions, seed=42)
+        TSNE_data = self.apply_TSNE(data=data, N_dimensions=N_dimensions)
         kmeans = self.apply_kmeans(data=TSNE_data, N_clusters=N_clusters, seed=42)
         centers = self.get_cluster_centers(data=TSNE_data)
         return kmeans, centers
