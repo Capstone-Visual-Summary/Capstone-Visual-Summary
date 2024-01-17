@@ -36,13 +36,14 @@ class DatabaseGeopandasPolygons(DatabaseParent):
 
     def run(self, **kwargs) -> tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]: # type: ignore
         neighbourhoods_info_file = 'Geo-JSON Files/neighbourhood_info_v1_0.geojson'
+        neighbourhood_pairs_file = 'Geo-JSON Files/neighbourhoods_v1_0.json'
         images = gpd.read_file('Geo-JSON Files/image_info.geojson')
         neighbourhoods = gpd.read_file(neighbourhoods_info_file)
         
         assigned_neighbourhoods: dict[str, set[int]] = dict()
 
         try:
-            with open('Geo-JSON Files/neighbourhoods_v1_0.json') as json_file:
+            with open(neighbourhood_pairs_file) as json_file:
                 assigned_neighbourhoods = json.load(json_file)
 
             return assigned_neighbourhoods, images, neighbourhoods # type: ignore
@@ -60,11 +61,11 @@ class DatabaseGeopandasPolygons(DatabaseParent):
             if neighbourhood_id not in assigned_neighbourhoods:
                 assigned_neighbourhoods[neighbourhood_id] = set()
 
-            assigned_neighbourhoods[neighbourhood_id].add(int(row['img_id']))
+            assigned_neighbourhoods[neighbourhood_id].add(int(row['img_id_com']))
         
         assigned_neighbourhoods_list = {key: list(value) for key, value in assigned_neighbourhoods.items()}
 
-        with open(neighbourhoods_info_file, 'w') as json_file:
+        with open(neighbourhood_pairs_file, 'w') as json_file:
             json.dump(assigned_neighbourhoods_list, json_file)
 
         return assigned_neighbourhoods_list, images, neighbourhoods
@@ -77,13 +78,14 @@ class DatabaseUberHexSize7(DatabaseParent):
 
     def run(self, **kwargs) -> tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]: # type: ignore
         neighbourhoods_info_file = 'Geo-JSON Files/neighbourhood_info_v2_0.geojson'
+        neighbourhood_pairs_file = 'Geo-JSON Files/neighbourhoods_v2_0.json'
         images = gpd.read_file('Geo-JSON Files/image_info.geojson')
         neighbourhoods = gpd.read_file(neighbourhoods_info_file)
         
         assigned_neighbourhoods: dict[str, set[int]] = dict()
 
         try:
-            with open('Geo-JSON Files/neighbourhoods_v2_0.json') as json_file:
+            with open(neighbourhood_pairs_file) as json_file:
                 assigned_neighbourhoods = json.load(json_file)
 
             return assigned_neighbourhoods, images, neighbourhoods # type: ignore
@@ -101,11 +103,11 @@ class DatabaseUberHexSize7(DatabaseParent):
             if neighbourhood_id not in assigned_neighbourhoods:
                 assigned_neighbourhoods[neighbourhood_id] = set()
 
-            assigned_neighbourhoods[neighbourhood_id].add(int(row['img_id']))
+            assigned_neighbourhoods[neighbourhood_id].add(int(row['img_id_com']))
         
         assigned_neighbourhoods_list = {key: list(value) for key, value in assigned_neighbourhoods.items()}
 
-        with open(neighbourhoods_info_file, 'w') as json_file:
+        with open(neighbourhood_pairs_file, 'w') as json_file:
             json.dump(assigned_neighbourhoods_list, json_file)
 
         return assigned_neighbourhoods_list, images, neighbourhoods
@@ -118,14 +120,14 @@ class DatabaseUberHexSize8(DatabaseParent):
 
     def run(self, **kwargs) -> tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]: # type: ignore
         neighbourhoods_info_file = 'Geo-JSON Files/neighbourhood_info_v2_1.geojson'
-        
+        neighbourhood_pairs_file = 'Geo-JSON Files/neighbourhoods_v2_1.json'
         images = gpd.read_file('Geo-JSON Files/image_info.geojson')
         neighbourhoods = gpd.read_file(neighbourhoods_info_file)
         
         assigned_neighbourhoods: dict[str, set[int]] = dict()
 
         try:
-            with open('Geo-JSON Files/neighbourhoods_v2_1.json') as json_file:
+            with open(neighbourhood_pairs_file) as json_file:
                 assigned_neighbourhoods = json.load(json_file)
 
             return assigned_neighbourhoods, images, neighbourhoods # type: ignore
@@ -143,11 +145,11 @@ class DatabaseUberHexSize8(DatabaseParent):
             if neighbourhood_id not in assigned_neighbourhoods:
                 assigned_neighbourhoods[neighbourhood_id] = set()
 
-            assigned_neighbourhoods[neighbourhood_id].add(int(row['img_id']))
+            assigned_neighbourhoods[neighbourhood_id].add(int(row['img_id_com']))
         
         assigned_neighbourhoods_list = {key: list(value) for key, value in assigned_neighbourhoods.items()}
 
-        with open(neighbourhoods_info_file, 'w') as json_file:
+        with open(neighbourhood_pairs_file, 'w') as json_file:
             json.dump(assigned_neighbourhoods_list, json_file)
 
         return assigned_neighbourhoods_list, images, neighbourhoods
@@ -160,14 +162,14 @@ class DatabaseUberHexSize9(DatabaseParent):
 
     def run(self, **kwargs) -> tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]: # type: ignore
         neighbourhoods_info_file = 'Geo-JSON Files/neighbourhood_info_v2_2.geojson'
-        
+        neighbourhood_pairs_file = 'Geo-JSON Files/neighbourhoods_v2_2.json'
         images = gpd.read_file('Geo-JSON Files/image_info.geojson')
         neighbourhoods = gpd.read_file(neighbourhoods_info_file)
         
         assigned_neighbourhoods: dict[str, set[int]] = dict()
 
         try:
-            with open('Geo-JSON Files/neighbourhoods_v2_2.json') as json_file:
+            with open(neighbourhood_pairs_file) as json_file:
                 assigned_neighbourhoods = json.load(json_file)
 
             return assigned_neighbourhoods, images, neighbourhoods # type: ignore
@@ -185,11 +187,11 @@ class DatabaseUberHexSize9(DatabaseParent):
             if neighbourhood_id not in assigned_neighbourhoods:
                 assigned_neighbourhoods[neighbourhood_id] = set()
 
-            assigned_neighbourhoods[neighbourhood_id].add(int(row['img_id']))
+            assigned_neighbourhoods[neighbourhood_id].add(int(row['img_id_com']))
         
         assigned_neighbourhoods_list = {key: list(value) for key, value in assigned_neighbourhoods.items()}
 
-        with open(neighbourhoods_info_file, 'w') as json_file:
+        with open(neighbourhood_pairs_file, 'w') as json_file:
             json.dump(assigned_neighbourhoods_list, json_file)
 
         return assigned_neighbourhoods_list, images, neighbourhoods
