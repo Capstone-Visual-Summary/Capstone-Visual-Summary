@@ -94,8 +94,6 @@ class SummerizationKmeans(SummarizationParent):
             lists of IDs assigned to each cluster.
         '''
     
-        id_label_dict = dict(zip(data.keys(), self.kmeans.labels_))
-
         label_id_dict = {}
 
         for id_, cluster in id_label_dict.items():
@@ -144,7 +142,7 @@ class SummerizationHierarchy(SummarizationParent):
         name (str): The name of the clustering technique followed by PCA (e.g., "PCA_Kmeans_Hierical").
     '''
     def __init__(self) -> None:
-        self.version: float | str = '1.1WIP'
+        self.version: float | str = 1.1
         self.name: str = "PCA_Hierical"
         
     def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
@@ -212,8 +210,6 @@ class SummerizationHierarchy(SummarizationParent):
             lists of IDs assigned to each cluster.
         '''
     
-        id_label_dict = dict(zip(data.keys(), self.hierarchical.labels_))
-
         label_id_dict = {}
 
         for id_, cluster in id_label_dict.items():
@@ -276,9 +272,9 @@ if __name__ == "__main__":
     
     summarization = SummarizationParent()
     all_points, centers = summarization.run(
-        summarization_version="1.1WIP",
+        summarization_version=1.0,
         data=data,
-        N_dimensions=2,
+        N_dimensions=5,
         N_clusters=4
     )
     
