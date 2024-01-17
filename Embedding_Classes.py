@@ -38,7 +38,6 @@ class EmbeddingResNet(EmbeddingParent):
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
         use_cuda = torch.cuda.is_available()
-        print(use_cuda)
         img2vec = Img2Vec(cuda=use_cuda, model='resnet152', layer='default', layer_output_size=2048, gpu=0)
         # layer = 'layer_name' For advanced users, which layer of the model to extract the output from.   default: 'avgpool'
         img = Image.open(image).convert('RGB')
@@ -48,6 +47,8 @@ class EmbeddingResNet(EmbeddingParent):
     def run(self, **kwargs):
         if 'file_name' in kwargs:
             file_name = f"Embedding Files/kwargs['file_name']"
+            version_split = str(self.version).split('.')
+            file_name = f'Embedding Files/Embeddings_{version_split[0]}_{version_split[1]}_0.csv'
         else:
             version_split = str(self.version).split('.')
             file_name = f'Embedding Files/Embeddings_{version_split[0]}_{version_split[1]}_0.csv'
@@ -71,8 +72,7 @@ class EmbeddingResNet(EmbeddingParent):
             return self.image_embeddings[str(kwargs['image_id'])]
         
         path = 'U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + kwargs['img_path']
-        
-        image_embedding = self.Image2Vec_embedder_ResNet152(path)
+
         image_embedding = self.Image2Vec_embedder_ResNet152(path)
 
         self.image_embeddings[str(kwargs['image_id'])] = image_embedding
@@ -113,7 +113,7 @@ class EmbeddingResNet_2_0(EmbeddingParent):
         return vec
         
     def run(self, **kwargs):
-        file_name = 'Embedding Files/Embeddings_1_0_0.csv'
+        file_name = 'Embedding Files/Embeddings_2_0_0.csv'
 
         if not hasattr(self, 'image_embeddings'):
             try:
