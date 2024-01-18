@@ -25,7 +25,7 @@ def OneRUNtoRUNthemALL(**kwargs):
  
 	start_hood = min(len(neighbourhood_images), max(0, kwargs['start_hood'])) if 'start_hood' in kwargs else 0
 	stop_hood = min(len(neighbourhood_images), max(0, kwargs['stop_hood'])) if 'stop_hood' in kwargs else len(neighbourhood_images)
-	step_size = step_size = min(len(neighbourhood_images), max(0, kwargs['step_size'])) if 'step_size' in kwargs else 1
+	step_size = min(len(neighbourhood_images), max(0, kwargs['step_size'])) if 'step_size' in kwargs else 1
 
 	wanted_hoods = [i for i in range(start_hood, stop_hood, step_size)]
 	print('Using neighbourhood ids:', wanted_hoods)
@@ -41,9 +41,8 @@ def OneRUNtoRUNthemALL(**kwargs):
 		image_ids = neighbourhood_images[neighbourhood_id]
   
 		for image_id in image_ids:
-			for index, path in enumerate(images.loc[(images['img_id'] == image_id), 'path']):
-				unique_img_id = int(image_id) * 4 + index
-				embeddings[str(unique_img_id)] = embedding_parent.run(image_id=unique_img_id, img_path=path, **kwargs) # list[float]
+			path = images.loc[(images['img_id_com'] == image_id), 'path'].iloc[0]
+			embeddings[str(image_id)] = embedding_parent.run(image_id=image_id, img_path=path, **kwargs) # list[float]
 		
 		embedding_neighbourhood[neighbourhood_id] = embeddings
 
