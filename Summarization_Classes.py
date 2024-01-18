@@ -516,7 +516,7 @@ def pretty_print(all_points, centers):
 
 if __name__ == "__main__":
     
-    test_data = pd.read_csv('Embedding Files\Embeddings_1_0_0.csv')
+    test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
 
     # print(compare_times(data))
