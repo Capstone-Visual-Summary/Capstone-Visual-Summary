@@ -275,7 +275,7 @@ class SummerizationDensity(SummarizationParent):
     '''
     def __init__(self) -> None:
         self.version: float | str = 1.2
-        self.name: str = "PCA_Hierical"
+        self.name: str = "PCA_Density"
         
     def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
         '''
@@ -303,7 +303,7 @@ class SummerizationDensity(SummarizationParent):
         
         return result_dict
     
-    def apply_density_clustering(self, **kwargs) -> Dict[str, List[int]]:
+    def apply_density(self, **kwargs) -> Dict[str, List[int]]:
         '''
         Applies Density Clustering on the input data.
 
@@ -501,7 +501,7 @@ if __name__ == "__main__":
     
     summarization = SummarizationParent()
     all_points, centers = summarization.run(
-        summarization_version=1.1,
+        summarization_version=1.2,
         data=data,
         N_dimensions=3,
         N_clusters=4
