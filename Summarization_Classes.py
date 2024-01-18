@@ -1,5 +1,3 @@
-from cgi import test
-from os import close
 import ast
 import torch
 from typing import Union, List, Dict
@@ -405,28 +403,16 @@ class SummerizationTSNE(SummarizationParent):
     def __init__(self) -> None:
         self.version: float | str = 2.0
         self.name: str = "TSNE_Kmeans"
-        
-    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
-        data: dict[int, tensor] = kwargs['data']
-        N: int = kwargs['N_dimensions']
-        # Extract numerical values from tensors
-        numerical_data = torch.stack(list(data.values())).numpy()
-
-        pca = PCA(n_components=N)
-        transformed_data = pca.fit_transform(numerical_data)
-
-        # Create a dictionary with IDs as keys and transformed data as values for overview
-        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
-        
-        return result_dict
     
     def apply_TSNE(self, **kwargs) -> dict[int, list[float]]:
         data: dict[int, tensor] = kwargs['data']
         N: int = kwargs['N_dimensions']
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
+        # Adjust perprexity if there are to few samples
+        perplexity = 30 if len(numerical_data) > 30 else len(numerical_data) - 1
 
-        tsne = TSNE(n_components=N, random_state=42)
+        tsne = TSNE(n_components=N, random_state=42, perplexity=perplexity)
         transformed_data = tsne.fit_transform(numerical_data)
 
         # Create a dictionary with IDs as keys and transformed data as values for overview
