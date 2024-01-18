@@ -30,6 +30,7 @@ def OneRUNtoRUNthemALL(**kwargs):
 	wanted_hoods = [i for i in range(start_hood, stop_hood, step_size)]
 	print('Using neighbourhood ids:', wanted_hoods)
 
+
 	embedding_neighbourhood = dict()
 
 	for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images)):
@@ -57,10 +58,10 @@ def OneRUNtoRUNthemALL(**kwargs):
 	print('DONE')
  
 
-OneRUNtoRUNthemALL(database_version = 1.0, start_hood = 1, stop_hood = 2, step_size = 1, 
+OneRUNtoRUNthemALL(database_version = 1.0, start_hood = 2, stop_hood = 3, step_size = 1, 
 				   embedder_version = 1.0, rerun = False, 
 				   summarization_version = 1.0, K_images = 5, N_clusters = 3, N_dimensions = 5, 
 				   visualization_version = 1.0, visualize = True,
-				   file_name = 'TEST')
+				   file_name = '')
 
 
