@@ -66,7 +66,7 @@ class EmbeddingResNet(EmbeddingParent):
                 self.image_embeddings = dict()
             
         if 'rerun' in kwargs and kwargs['rerun']:
-                self.image_embeddings = dict()
+            self.image_embeddings = dict()
         
         if str(kwargs['image_id']) in self.image_embeddings:
             return self.image_embeddings[str(kwargs['image_id'])]
