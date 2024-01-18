@@ -403,8 +403,8 @@ class SummerizationUMAP(SummarizationParent):
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
         
-        umap = UMAP(n_components=N, random_state=seed, n_jobs=1, n_neighbors=n_neighbors)
-        transformed_data = umap.fit_transform(numerical_data)
+        umap_reducer = UMAP(n_components=N, random_state=seed, n_jobs=1, n_neighbors=n_neighbors)
+        transformed_data = umap_reducer.fit_transform(numerical_data)
         
         # Create a dictionary with IDs as keys and transformed data as values for overview
         result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
@@ -519,17 +519,17 @@ if __name__ == "__main__":
     test_data = pd.read_csv('Embedding Files\Embeddings_1_0_0.csv')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
 
-    print(compare_times(data))
+    # print(compare_times(data))
         
-    # summarization = SummarizationParent()
-    # all_points, centers = summarization.run(
-    #     summarization_version=2.1,
-    #     data=data,
-    #     N_dimensions=5,
-    #     N_clusters=4
-    # )
+    summarization = SummarizationParent()
+    all_points, centers = summarization.run(
+        summarization_version=2.1,
+        data=data,
+        N_dimensions=5,
+        N_clusters=4
+    )
     
-    # pretty_print(all_points, centers)
+    pretty_print(all_points, centers)
 
 #Example Output
 #{'Cluster 0': ['53568', '53570', '53572', '53574'], 'Cluster 1': ['53569', '53573'], 'Cluster 2': ['53571'], 'Cluster 3': ['53575']}
