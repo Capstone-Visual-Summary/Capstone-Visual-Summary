@@ -229,9 +229,35 @@ class SummerizationDensity(SummarizationParent):
     '''
     def __init__(self) -> None:
         self.version: float | str = 1.2
-        self.name: str = "PCA_Hierical"
+        self.name: str = "PCA_Density"
+        
+    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
+        '''
+        Applies Principal Component Analysis (PCA) on the input data.
+
+        Parameters:
+            data (dict[int, tensor]): A dictionary where keys are IDs, and values are tensors.
+            N (int): The number of principal components to retain.
+
+        Returns:
+            dict[int, list[float]]: A dictionary where keys are IDs, and values are lists
+            of transformed data after PCA.
+        '''
+        data: dict[int, tensor] = kwargs['data']
+        N: int = kwargs['N_dimensions']
+        # Extract numerical values from tensors
+        numerical_data = torch.stack(list(data.values())).numpy()
+
+        pca = PCA(n_components=N)
+        pca.fit(numerical_data)
+        transformed_data = pca.transform(numerical_data)
+
+        # Create a dictionary with IDs as keys and transformed data as values for overview
+        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
+        
+        return result_dict
     
-    def apply_density(self, **kwargs) -> Dict[str, List[int]]:
+    def apply_density_clustering(self, **kwargs) -> Dict[str, List[int]]:
         '''
         Applies Density Clustering on the input data.
 
@@ -381,7 +407,7 @@ if __name__ == "__main__":
     
     summarization = SummarizationParent()
     all_points, centers = summarization.run(
-        summarization_version=2.0,
+        summarization_version=1.2,
         data=data,
         N_dimensions=3,
         N_clusters=4
