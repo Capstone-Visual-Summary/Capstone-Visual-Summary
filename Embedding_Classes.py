@@ -45,10 +45,8 @@ class EmbeddingResNet(EmbeddingParent):
         return vec
     
     def run(self, **kwargs):
-        if 'file_name' in kwargs:
-            file_name = f"Embedding Files/kwargs['file_name']"
-            version_split = str(self.version).split('.')
-            file_name = f'Embedding Files/Embeddings_{version_split[0]}_{version_split[1]}_0.csv'
+        if 'file_name' in kwargs and kwargs['file_name'] != '':
+            file_name = f"Embedding Files/" + kwargs['file_name']
         else:
             version_split = str(self.version).split('.')
             file_name = f'Embedding Files/Embeddings_{version_split[0]}_{version_split[1]}_0.csv'
@@ -66,13 +64,13 @@ class EmbeddingResNet(EmbeddingParent):
                 self.image_embeddings = dict()
             
         if 'rerun' in kwargs and kwargs['rerun']:
-            self.image_embeddings = dict()
+                self.image_embeddings = dict()
         
         if str(kwargs['image_id']) in self.image_embeddings:
             return self.image_embeddings[str(kwargs['image_id'])]
         
         path = 'U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + kwargs['img_path']
-
+        
         image_embedding = self.Image2Vec_embedder_ResNet152(path)
 
         self.image_embeddings[str(kwargs['image_id'])] = image_embedding

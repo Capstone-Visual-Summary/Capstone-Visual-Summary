@@ -16,10 +16,10 @@ def OneRUNtoRUNthemALL(**kwargs):
 	visualization_parent = VisualizationParent()
 
 	print('Database rev:', kwargs['database_version'] if 'database_version' in kwargs else 'Newest', 
-	   	'Embedder rev:', kwargs['embedder_version'] if 'embedder_version' in kwargs else 'Newest', 
-		'Summarization rev:', kwargs['summarization_version'] if 'summarization_version' in kwargs else 'Newest', 
-		'visualization rev:', kwargs['visualization_version'] if 'visualization_version' in kwargs else 'Newest', 
-		'file name:', kwargs['file_name'] if 'file_name' in kwargs else 'Empty')
+	   	'| Embedder rev:', kwargs['embedder_version'] if 'embedder_version' in kwargs else 'Newest', 
+		'| Summarization rev:', kwargs['summarization_version'] if 'summarization_version' in kwargs else 'Newest', 
+		'| visualization rev:', kwargs['visualization_version'] if 'visualization_version' in kwargs else 'Newest', 
+		'| file name:', kwargs['file_name'] if 'file_name' in kwargs and kwargs['file_name'] != '' else 'Empty')
 
 	neighbourhood_images, images, neighbourhoods = database_parent.run(**kwargs) # type: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]
  
@@ -51,8 +51,9 @@ def OneRUNtoRUNthemALL(**kwargs):
 	for neighbourhood_id in embedding_neighbourhood:
 		# summaries is of type: tuple[dict[str, list[str]], dict[str, str]], so tuple[clusters, centroids]
 		summaries[str(neighbourhood_id)] = summarization_parent.run(data=embedding_neighbourhood[str(neighbourhood_id)], **kwargs)
-
-	visualization_parent.run(**kwargs)
+	
+	for neighbourhood_id in embedding_neighbourhood:
+		visualization_parent.run(summary = summaries[neighbourhood_id], images = images, **kwargs)
 	print('DONE')
  
 
@@ -60,6 +61,6 @@ OneRUNtoRUNthemALL(database_version = 1.0, start_hood = 1, stop_hood = 2, step_s
 				   embedder_version = 1.0, rerun = False, 
 				   summarization_version = 1.0, K_images = 5, N_clusters = 3, N_dimensions = 5, 
 				   visualization_version = 1.0, visualize = True,
-				   file_name = '')
+				   file_name = 'TEST')
 
 
