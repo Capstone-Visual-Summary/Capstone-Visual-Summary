@@ -262,6 +262,140 @@ class SummerizationHierarchy(SummarizationParent):
         hierarchical = self.apply_hierarchical(data=pca_data, n_clusters=n_clusters, seed=42)
         centers = self.get_cluster_centers(data=pca_data)
         return hierarchical, centers
+    
+    ########################################## 1.2 ##########################################################
+   
+
+class SummerizationDensity(SummarizationParent):
+    '''
+    This class performs Principal Component Analysis (PCA) on input data and applies
+     clustering Density Clustering.
+
+    Attributes:
+        version (float | str): The version of the Summerization class.
+        name (str): The name of the clustering technique followed by PCA (e.g., "PCA_Kmeans_Hierical").
+    '''
+    def __init__(self) -> None:
+        self.version: float | str = 1.2
+        self.name: str = "PCA_Hierical"
+        
+    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
+        '''
+        Applies Principal Component Analysis (PCA) on the input data.
+
+        Parameters:
+            data (dict[int, tensor]): A dictionary where keys are IDs, and values are tensors.
+            N (int): The number of principal components to retain.
+
+        Returns:
+            dict[int, list[float]]: A dictionary where keys are IDs, and values are lists
+            of transformed data after PCA.
+        '''
+        data: dict[int, tensor] = kwargs['data']
+        N: int = kwargs['N_dimensions']
+        # Extract numerical values from tensors
+        numerical_data = torch.stack(list(data.values())).numpy()
+
+        pca = PCA(n_components=N)
+        pca.fit(numerical_data)
+        transformed_data = pca.transform(numerical_data)
+
+        # Create a dictionary with IDs as keys and transformed data as values for overview
+        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
+        
+        return result_dict
+    
+    def apply_density_clustering(self, **kwargs) -> Dict[str, List[int]]:
+        '''
+        Applies Density Clustering on the input data.
+
+        Parameters:
+            data (dict[int, list[float]]): A dictionary where keys are IDs, and values are lists
+            of transformed data after PCA.
+            n_clusters (int): The number of clusters to form.
+            seed (int): The random seed for reproducibility.
+
+        Returns:
+            Dict[str, List[int]]: A dictionary where keys are cluster names (e.g., "Cluster 1"),
+            and values are lists of corresponding IDs assigned to each cluster.
+        '''
+        data: dict[int, list[float]] = kwargs['data']
+        n_clusters: int = kwargs['n_clusters']
+        # Assuming a suitable density clustering method is used here
+        # Modify the following line accordingly
+        self.density = AgglomerativeClustering(n_clusters=n_clusters)
+        self.density.fit_predict(list(data.values()))
+
+        id_label_dict = dict(zip(data.keys(), self.density.labels_))
+        label_id_dict = self._create_label_id_dict(id_label_dict)
+
+        return label_id_dict
+
+    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
+        '''
+        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
+        values are lists of corresponding IDs assigned to each cluster.
+
+        Parameters:
+            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
+            corresponding cluster labels.
+
+        Returns:
+            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
+            lists of IDs assigned to each cluster.
+        '''
+    
+        label_id_dict = {}
+
+        for id_, cluster in id_label_dict.items():
+            cluster_name = f"Cluster {cluster + 1}"
+            if cluster_name not in label_id_dict:
+                label_id_dict[cluster_name] = []
+            label_id_dict[cluster_name].append(id_)
+
+        return label_id_dict
+    
+    def get_cluster_centers(self, **kwargs) -> dict[int, str]:
+        '''
+        Calculates representative cluster centers for each cluster in the density clustering results.
+
+        Parameters:
+            **kwargs: Additional keyword arguments.
+                - data (dict[int, list[float]]): A dictionary where keys are image IDs, and values are lists
+                representing the transformed data after PCA.
+        
+        Returns:
+            dict[int, str]: A dictionary where keys are cluster names (e.g., "Mean Center Cluster 1"),
+            and values are image IDs representing the closest data point to the mean center of each cluster.
+        '''
+        data: dict[int, list[float]] = kwargs['data']
+        density_labels = self.density.labels_
+
+        cluster_centers = {}
+        for cluster_id in np.unique(density_labels):
+            cluster_points = [data[image_id] for image_id, label in zip(data.keys(), density_labels) if label == cluster_id]
+            mean_center = np.mean(cluster_points, axis=0)
+            
+            min_distance = float('inf')
+            center_image_id = None
+            for image_id, image_data in data.items():
+                dist = distance.euclidean(mean_center, image_data)
+                if dist < min_distance:
+                    min_distance = dist
+                    center_image_id = image_id
+
+            cluster_centers[f'Mean Center Cluster {cluster_id + 1}'] = center_image_id
+
+        return cluster_centers
+
+    def run(self, **kwargs):
+        data = kwargs['data']
+        N_pca_d = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        n_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
+        pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
+        density = self.apply_density(data=pca_data, n_clusters=n_clusters, seed=42)
+        centers = self.get_cluster_centers(data=pca_data)
+        return density, centers
 
 
 ########################################## 2.0 ##########################################################
@@ -381,7 +515,7 @@ if __name__ == "__main__":
     
     summarization = SummarizationParent()
     all_points, centers = summarization.run(
-        summarization_version=2.0,
+        summarization_version=1.1,
         data=data,
         N_dimensions=3,
         N_clusters=4
