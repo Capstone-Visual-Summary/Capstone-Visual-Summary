@@ -111,7 +111,11 @@ class EmbeddingResNet_2_0(EmbeddingParent):
         return vec
         
     def run(self, **kwargs):
-        file_name = 'Embedding Files/Embeddings_2_0_0.csv'
+        if 'file_name' in kwargs and kwargs['file_name'] != '':
+            file_name = f"Embedding Files/" + kwargs['file_name']
+        else:
+            version_split = str(self.version).split('.')
+            file_name = f'Embedding Files/Embeddings_{version_split[0]}_{version_split[1]}_0.csv'
 
         if not hasattr(self, 'image_embeddings'):
             try:
