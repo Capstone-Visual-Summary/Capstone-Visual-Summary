@@ -9,6 +9,28 @@ from tqdm import tqdm
 import torch
 
 def OneRUNtoRUNthemALL(**kwargs):
+	"""
+	Runs a series of operations on the given input parameters.
+
+	Parameters:
+		**kwargs: Keyword arguments for specifying the input parameters. The following parameters are supported:
+			- database_version (float): The version of the database to use. Defaults to the newest version.
+			- start_hood (int): The starting neighborhood ID. Defaults to 0.
+			- stop_hood (int): The stopping neighborhood ID. Defaults to the total number of neighborhoods.
+			- step_size (int): The step size for iterating over the neighborhoods. Defaults to 1.
+			- embedder_version (float): The version of the embedder to use. Defaults to the newest version.
+			- rerun (bool): Whether to rerun the embedder. Defaults to False.
+			- summarization_version (float): The version of the summarization algorithm to use. Defaults to the newest version.
+			- K_images (int): The number of images to include in each summary. Defaults to 5.
+			- N_clusters (int): The number of clusters to create in the summarization algorithm. Defaults to 3.
+			- N_dimensions (int): The number of dimensions to use in the embedding algorithm. Defaults to 5.
+			- visualization_version (float): The version of the visualization algorithm to use. Defaults to the newest version.
+			- visualize (bool): Whether to visualize the results. Defaults to True.
+			- file_name (str): The name of the file to save the results. Defaults to an empty string.
+
+	Returns:
+		None
+	"""
 	print('START')
 	database_parent = DatabaseParent()
 	embedding_parent = EmbeddingParent()
@@ -16,13 +38,13 @@ def OneRUNtoRUNthemALL(**kwargs):
 	visualization_parent = VisualizationParent()
 
 	print('Database rev:', kwargs['database_version'] if 'database_version' in kwargs else 'Newest', 
-	   	'| Embedder rev:', kwargs['embedder_version'] if 'embedder_version' in kwargs else 'Newest', 
+		'| Embedder rev:', kwargs['embedder_version'] if 'embedder_version' in kwargs else 'Newest', 
 		'| Summarization rev:', kwargs['summarization_version'] if 'summarization_version' in kwargs else 'Newest', 
 		'| visualization rev:', kwargs['visualization_version'] if 'visualization_version' in kwargs else 'Newest', 
 		'| file name:', kwargs['file_name'] if 'file_name' in kwargs and kwargs['file_name'] != '' else 'Empty')
 
 	neighbourhood_images, images, neighbourhoods = database_parent.run(**kwargs) # type: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]
- 
+
 	start_hood = min(len(neighbourhood_images), max(0, kwargs['start_hood'])) if 'start_hood' in kwargs else 0
 	stop_hood = min(len(neighbourhood_images), max(0, kwargs['stop_hood'])) if 'stop_hood' in kwargs else len(neighbourhood_images)
 	step_size = min(len(neighbourhood_images), max(0, kwargs['step_size'])) if 'step_size' in kwargs else 1
@@ -40,7 +62,7 @@ def OneRUNtoRUNthemALL(**kwargs):
 		embeddings = dict()
 
 		image_ids = neighbourhood_images[neighbourhood_id]
-  
+
 		for image_id in image_ids:
 			path = images.loc[(images['img_id_com'] == image_id), 'path'].iloc[0]
 			embeddings[str(image_id)] = embedding_parent.run(image_id=image_id, img_path=path, **kwargs) # list[float]
@@ -52,7 +74,7 @@ def OneRUNtoRUNthemALL(**kwargs):
 	for neighbourhood_id in embedding_neighbourhood:
 		# summaries is of type: tuple[dict[str, list[str]], dict[str, str]], so tuple[clusters, centroids]
 		summaries[str(neighbourhood_id)] = summarization_parent.run(data=embedding_neighbourhood[str(neighbourhood_id)], **kwargs)
-	
+
 	for neighbourhood_id in embedding_neighbourhood:
 		visualization_parent.run(summary = summaries[neighbourhood_id], images = images, **kwargs)
 	print('DONE')
