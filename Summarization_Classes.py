@@ -319,7 +319,7 @@ class SummerizationTSNE(SummarizationParent):
     
     def apply_TSNE(self, **kwargs) -> dict[int, list[float]]:
         data: dict[int, tensor] = kwargs['data']
-        N: int = kwargs['N_dimensions']
+        N: int = min(kwargs['N_dimensions'], 3)
         perplexity: int = kwargs['perplexity'] if 'perplexity' in kwargs else 30
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
@@ -397,8 +397,9 @@ class SummerizationUMAP(SummarizationParent):
         data: dict[int, tensor] = kwargs['data']
         N: int = kwargs['N_dimensions']
         seed: int = kwargs['seed'] if 'seed' in kwargs else 42
-        # Adjust n_neighbors if there are to few samples
+        # Adjust n_neighbors and n_components if there are to few samples
         n_neighbors = 15 if len(data) > 15 else len(data) - 1
+        N = N if N < n_neighbors else n_neighbors - 1
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
         
@@ -479,7 +480,7 @@ def time_version(**kwargs) -> float:
         summarization.run(
             summarization_version=version,
             data=data,
-            N_dimensions=3,
+            N_dimensions=10,
             N_clusters=3
         )
         end_time = time.perf_counter()
