@@ -67,22 +67,46 @@ class StreetViewTripletDataset(Dataset):
     def __getitem__(self, idx):
         location = self.locations[idx]
         location_images = self.images[location]
-        
-        # Choose a random anchor and positive image
-        anchor_img_name, positive_img_name = random.sample(location_images, 2)
+
+        anchor_img_name = random.choice(location_images)
         anchor_img_path = os.path.join(self.root_dir, location, anchor_img_name)
-        positive_img_path = os.path.join(self.root_dir, location, positive_img_name)
-        
-        # Choose a random negative location
-        negative_location = random.choice([loc for loc in self.locations if loc != location])
-        negative_img_name = random.choice(self.images[negative_location])
+
+        # Get the year from the anchor image name
+        anchor_year = int(anchor_img_name.split('_')[0])
+
+        # Find positive image within 3 meters and in a different year
+        positive_location = None
+        positive_img_name = None
+        while positive_location is None or positive_location == location or positive_img_name is None:
+            positive_location = random.choice(self.locations)
+            if abs(int(positive_location) - int(location)) <= 3:
+                positive_images = self.images[positive_location]
+                positive_img_name = random.choice(positive_images)
+                positive_img_year = int(positive_img_name.split('_')[0])
+                if positive_img_year == anchor_year:
+                    positive_img_name = None
+
+        positive_img_path = os.path.join(self.root_dir, positive_location, positive_img_name)
+
+        # Find negative image within 100-500 meters and in the same year as the positive image
+        negative_location = None
+        negative_img_name = None
+        while negative_location is None or negative_location == location or negative_img_name is None:
+            negative_location = random.choice(self.locations)
+            if abs(int(negative_location) - int(location)) >= 100 and abs(int(negative_location) - int(location)) <= 500:
+                negative_images = self.images[negative_location]
+                negative_img_name = random.choice(negative_images)
+                negative_img_year = int(negative_img_name.split('_')[0])
+                if negative_img_year != anchor_year:
+                    negative_img_name = None
+
         negative_img_path = os.path.join(self.root_dir, negative_location, negative_img_name)
-        
+
         # Load images
         anchor_img = Image.open(anchor_img_path).convert('RGB')
         positive_img = Image.open(positive_img_path).convert('RGB')
         negative_img = Image.open(negative_img_path).convert('RGB')
-        
+
         # Apply transformations
         if self.transform:
             anchor_img = self.transform(anchor_img)
