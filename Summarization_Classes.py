@@ -41,7 +41,10 @@ class SummarizationParent(GrandParent):
             of transformed data after PCA.
         '''
         data: dict[int, tensor] = kwargs['data']
-        N: int = kwargs['N_dimensions']
+        # Check if the number of dimensions is not larger than the number of data points
+        key = list(data.keys())[0]
+        max_dimensions = min(len(data[key]), len(data))
+        N: int = kwargs['N_dimensions'] if kwargs['N_dimensions'] < max_dimensions else max_dimensions
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
         pca = PCA(n_components=N)
@@ -51,6 +54,7 @@ class SummarizationParent(GrandParent):
         result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
         
         return result_dict
+    
     
     def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
         '''
@@ -86,24 +90,6 @@ class SummerizationKmeans(SummarizationParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
         self.name: str = "PCA_Kmeans"
-        
-    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
-        data: dict[int, tensor] = kwargs['data']
-        # Check if the number of dimensions is not larger than the number of data points
-        key = list(data.keys())[0]
-        max_dimensions = min(len(data[key]), len(data))
-        N: int = kwargs['N_dimensions'] if kwargs['N_dimensions'] < max_dimensions else max_dimensions
-        # Extract numerical values from tensors
-        numerical_data = torch.stack(list(data.values())).numpy()
-
-        pca = PCA(n_components=N)
-        pca.fit(numerical_data)
-        transformed_data = pca.transform(numerical_data)
-
-        # Create a dictionary with IDs as keys and transformed data as values for overview
-        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
-        
-        return result_dict
     
     def apply_kmeans(self, **kwargs) -> Dict[str, List[int]]:
         '''
@@ -253,37 +239,8 @@ class SummerizationDensity(SummarizationParent):
     def __init__(self) -> None:
         self.version: float | str = 1.2
         self.name: str = "PCA_Density"
-        
-    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
-        '''
-        Applies Principal Component Analysis (PCA) on the input data.
-
-        Parameters:
-            data (dict[int, tensor]): A dictionary where keys are IDs, and values are tensors.
-            N (int): The number of principal components to retain.
-
-        Returns:
-            dict[int, list[float]]: A dictionary where keys are IDs, and values are lists
-            of transformed data after PCA.
-        '''
-        data: dict[int, tensor] = kwargs['data']
-        # Check if the number of dimensions is not larger than the number of data points
-        key = list(data.keys())[0]
-        max_dimensions = min(len(data[key]), len(data))
-        N: int = kwargs['N_dimensions'] if kwargs['N_dimensions'] < max_dimensions else max_dimensions
-        # Extract numerical values from tensors
-        numerical_data = torch.stack(list(data.values())).numpy()
-
-        pca = PCA(n_components=N)
-        pca.fit(numerical_data)
-        transformed_data = pca.transform(numerical_data)
-
-        # Create a dictionary with IDs as keys and transformed data as values for overview
-        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
-        
-        return result_dict
     
-    def apply_density_clustering(self, **kwargs) -> Dict[str, List[int]]:
+    def apply_density(self, **kwargs) -> Dict[str, List[int]]:
         '''
         Applies Density Clustering on the input data.
 
@@ -479,30 +436,6 @@ class SummerizationUMAP(SummarizationParent):
         label_id_dict = self._create_label_id_dict(id_label_dict)
 
         return label_id_dict
-        
-    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
-        '''
-        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
-        values are lists of corresponding IDs assigned to each cluster.
-
-        Parameters:
-            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
-            corresponding cluster labels.
-
-        Returns:
-            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
-            lists of IDs assigned to each cluster.
-        '''
-    
-        label_id_dict = {}
-
-        for id_, cluster in id_label_dict.items():
-            cluster_name = f"Cluster {cluster + 1}"
-            if cluster_name not in label_id_dict:
-                label_id_dict[cluster_name] = []
-            label_id_dict[cluster_name].append(id_)
-
-        return label_id_dict
     
     def get_cluster_centers(self, **kwargs) -> dict[int, str]:
         data: dict[int, list[float]] = kwargs['data']
@@ -528,7 +461,10 @@ class SummerizationUMAP(SummarizationParent):
         centers = self.get_cluster_centers(data=UMAP_data)
         return kmeans, centers
 
-if __name__ == "__main__":
+def time_version(**kwargs) -> float:
+    '''
+    Returns the time taken to run the summarization algorithm with the given version.
+    '''
     
     test_data = pd.read_csv('Embedding Files\Embeddings_1_0_0.csv')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
@@ -549,7 +485,7 @@ if __name__ == "__main__":
         end_time = time.perf_counter()
         times.append(end_time - start_time)
     
-    return sum(times) / len(times)
+    return np.mean(times), np.std(times)
 
 
 def compare_times(data) -> pd.DataFrame:
@@ -566,10 +502,10 @@ def compare_times(data) -> pd.DataFrame:
     
     times = {}
     for version in versions:
-        time_taken = time_version(data=data, summarization_version=version)
-        times[versions[version]] = time_taken
+        stats= time_version(data=data, summarization_version=version)
+        times[versions[version]] = stats
     
-    return pd.DataFrame.from_dict(times, orient='index', columns=['Time'])
+    return pd.DataFrame.from_dict(times, orient='index', columns=['Mean Time', 'Standard Deviation'])
 
 def pretty_print(all_points, centers):
     for key in sorted(all_points.keys()):
