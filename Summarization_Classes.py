@@ -1,4 +1,7 @@
 import ast
+import timeit
+from pyproj import transform
+from sympy import comp
 import torch
 from typing import Union, List, Dict
 from Grand_Parent import GrandParent
@@ -6,13 +9,14 @@ import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from scipy.spatial import distance
-from torch import tensor
+from torch import seed, tensor
 import torch
 import os
 from scipy.spatial import distance
 import numpy as np
 from sklearn.manifold import TSNE
-
+import time
+from umap import UMAP
 
 
 # I don't know why, but otherwise I'm getting an error
@@ -40,7 +44,10 @@ class SummerizationKmeans(SummarizationParent):
         
     def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
         data: dict[int, tensor] = kwargs['data']
-        N: int = kwargs['N_dimensions']
+        # Check if the number of dimensions is not larger than the number of data points
+        key = list(data.keys())[0]
+        max_dimensions = min(len(data[key]), len(data))
+        N: int = kwargs['N_dimensions'] if kwargs['N_dimensions'] < max_dimensions else max_dimensions
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
 
@@ -157,7 +164,10 @@ class SummerizationHierarchy(SummarizationParent):
             of transformed data after PCA.
         '''
         data: dict[int, tensor] = kwargs['data']
-        N: int = kwargs['N_dimensions']
+        # Check if the number of dimensions is not larger than the number of data points
+        key = list(data.keys())[0]
+        max_dimensions = min(len(data[key]), len(data))
+        N: int = kwargs['N_dimensions'] if kwargs['N_dimensions'] < max_dimensions else max_dimensions
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
 
@@ -290,7 +300,10 @@ class SummerizationDensity(SummarizationParent):
             of transformed data after PCA.
         '''
         data: dict[int, tensor] = kwargs['data']
-        N: int = kwargs['N_dimensions']
+        # Check if the number of dimensions is not larger than the number of data points
+        key = list(data.keys())[0]
+        max_dimensions = min(len(data[key]), len(data))
+        N: int = kwargs['N_dimensions'] if kwargs['N_dimensions'] < max_dimensions else max_dimensions
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
 
@@ -407,10 +420,11 @@ class SummerizationTSNE(SummarizationParent):
     def apply_TSNE(self, **kwargs) -> dict[int, list[float]]:
         data: dict[int, tensor] = kwargs['data']
         N: int = kwargs['N_dimensions']
+        perplexity: int = kwargs['perplexity'] if 'perplexity' in kwargs else 30
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
         # Adjust perprexity if there are to few samples
-        perplexity = 30 if len(numerical_data) > 30 else len(numerical_data) - 1
+        perplexity = perplexity if len(numerical_data) > perplexity else len(numerical_data) - 1
 
         tsne = TSNE(n_components=N, random_state=42, perplexity=perplexity)
         transformed_data = tsne.fit_transform(numerical_data)
@@ -494,24 +508,173 @@ class SummerizationTSNE(SummarizationParent):
         centers = self.get_cluster_centers(data=TSNE_data)
         return kmeans, centers
 
-if __name__ == "__main__":
+########################################## 2.1 ##########################################################
+
+
+class SummerizationTSNE(SummarizationParent):
+    def __init__(self) -> None:
+        self.version: float | str = 2.1
+        self.name: str = "UMAP_Kmeans"
     
-    test_data = pd.read_csv('Embedding Files\Embeddings_1_0_0.csv')
-    data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
     
+    def apply_UMAP(self, **kwargs) -> Dict[str, List[float]]:
+        data: dict[int, tensor] = kwargs['data']
+        N: int = kwargs['N_dimensions']
+        seed: int = kwargs['seed'] if 'seed' in kwargs else 42
+        # Adjust n_neighbors if there are to few samples
+        n_neighbors = 15 if len(data) > 15 else len(data) - 1
+        # Extract numerical values from tensors
+        numerical_data = torch.stack(list(data.values())).numpy()
+        
+        umap = UMAP(n_components=N, random_state=seed, n_jobs=1, n_neighbors=n_neighbors)
+        transformed_data = umap.fit_transform(numerical_data)
+        
+        # Create a dictionary with IDs as keys and transformed data as values for overview
+        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
+        
+        return result_dict
+        
+    
+    def apply_kmeans(self, **kwargs) -> Dict[str, List[int]]:
+        '''
+        Applies KMeans clustering on the input data.
+
+        Parameters:
+            data (dict[int, list[float]]): A dictionary where keys are IDs, and values are lists
+            of transformed data after PCA.
+            n_clusters (int): The number of clusters to form.
+            seed (int): The random seed for reproducibility.
+
+        Returns:
+            Dict[str, List[int]]: A dictionary where keys are cluster names (e.g., "Cluster 1"),
+            and values are lists of corresponding IDs assigned to each cluster.
+        '''
+        data: dict[int, list[float]] = kwargs['data']
+        N_clusters: int = kwargs['N_clusters']
+        seed: int = kwargs['seed'] if 'seed' in kwargs else 42
+        kmeans = KMeans(n_clusters=N_clusters, n_init=10, random_state=seed)
+        kmeans.fit(list(data.values()))
+        self.kmeans = kmeans  # Set the kmeans attribute
+        id_label_dict = dict(zip(data.keys(), kmeans.labels_))
+
+        label_id_dict = self._create_label_id_dict(id_label_dict)
+
+        return label_id_dict
+        
+    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
+        '''
+        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
+        values are lists of corresponding IDs assigned to each cluster.
+
+        Parameters:
+            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
+            corresponding cluster labels.
+
+        Returns:
+            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
+            lists of IDs assigned to each cluster.
+        '''
+    
+        label_id_dict = {}
+
+        for id_, cluster in id_label_dict.items():
+            cluster_name = f"Cluster {cluster + 1}"
+            if cluster_name not in label_id_dict:
+                label_id_dict[cluster_name] = []
+            label_id_dict[cluster_name].append(id_)
+
+        return label_id_dict
+    
+    def get_cluster_centers(self, **kwargs) -> dict[int, str]:
+        data: dict[int, list[float]] = kwargs['data']
+        center_images = {}
+        for i in range(len(self.kmeans.cluster_centers_)):
+            center = self.kmeans.cluster_centers_[i]
+            min_distance = float('inf')
+            center_image_id = None
+            for image_id, image_data in data.items():
+                dist = distance.euclidean(center, image_data)
+                if dist < min_distance:
+                    min_distance = dist
+                    center_image_id = image_id
+            center_images[f'Centroid Cluster {i}'] = center_image_id
+        return center_images
+
+    def run(self, **kwargs):
+        data = kwargs['data']
+        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        N_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
+        UMAP_data = self.apply_UMAP(data=data, N_dimensions=N_dimensions, seed=42)
+        kmeans = self.apply_kmeans(data=UMAP_data, N_clusters=N_clusters, seed=42)
+        centers = self.get_cluster_centers(data=UMAP_data)
+        return kmeans, centers
+
+#########################################################################################################
+
+def time_version(**kwargs) -> float:
+    '''
+    returns the average time taken to run a single version of the summarization algorithm multiple times
+    '''
     summarization = SummarizationParent()
-    all_points, centers = summarization.run(
-        summarization_version=1.2,
-        data=data,
-        N_dimensions=3,
-        N_clusters=4
-    )
+    data = kwargs['data']
+    version = kwargs['summarization_version']
     
-    #Pretty printing the output
+    times = []
+    for _ in range(10):
+        start_time = time.perf_counter()
+        summarization.run(
+            summarization_version=version,
+            data=data,
+            N_dimensions=3,
+            N_clusters=3
+        )
+        end_time = time.perf_counter()
+        times.append(end_time - start_time)
+    
+    return sum(times) / len(times)
+
+
+def compare_times(data) -> pd.DataFrame:
+    '''	
+    returns a dataframe with the time taken to run each version of the summarization algorithm
+    '''	
+    versions = {
+        1.0: 'PCA_Kmeans',
+        1.1: 'PCA_Hierical',
+        1.2: 'PCA_Density',
+        2.0: 'TSNE_Kmeans',
+        2.1: 'UMAP_Kmeans'
+    }
+    
+    times = {}
+    for version in versions:
+        time_taken = time_version(data=data, summarization_version=version)
+        times[versions[version]] = time_taken
+    
+    return pd.DataFrame.from_dict(times, orient='index', columns=['Time'])
+
+def pretty_print(all_points, centers):
     for key in sorted(all_points.keys()):
         print(f"{key}: {all_points[key]}")
     for key in sorted(centers.keys()):
         print(f"{key}: {centers[key]}")
+
+if __name__ == "__main__":
+    
+    test_data = pd.read_csv('Embedding Files\Embeddings_1_0_0.csv')
+    data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
+
+    print(compare_times(data))
+        
+    # summarization = SummarizationParent()
+    # all_points, centers = summarization.run(
+    #     summarization_version=2.1,
+    #     data=data,
+    #     N_dimensions=5,
+    #     N_clusters=4
+    # )
+    
+    # pretty_print(all_points, centers)
 
 #Example Output
 #{'Cluster 0': ['53568', '53570', '53572', '53574'], 'Cluster 1': ['53569', '53573'], 'Cluster 2': ['53571'], 'Cluster 3': ['53575']}
