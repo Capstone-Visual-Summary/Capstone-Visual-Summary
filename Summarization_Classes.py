@@ -14,7 +14,6 @@ import numpy as np
 from sklearn.manifold import TSNE
 
 
-
 # I don't know why, but otherwise I'm getting an error
 os.environ["LOKY_MAX_CPU_COUNT"] = "4" 
 
@@ -24,9 +23,54 @@ class SummarizationParent(GrandParent):
         self.children: dict[str, dict[str, Union[str, SummarizationParent]]] = dict()
         self.children_names: set[int] = set()
 
-    def run(self, **kwargs):
-        version = kwargs['summarization_version'] if 'summarization_version' in kwargs else -1
+    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
+        '''
+        Applies Principal Component Analysis (PCA) on the input data.
+
+        Parameters:
+            data (dict[int, tensor]): A dictionary where keys are IDs, and values are tensors.
+            N (int): The number of principal components to retain.
+
+        Returns:
+            dict[int, list[float]]: A dictionary where keys are IDs, and values are lists
+            of transformed data after PCA.
+        '''
+        data: dict[int, tensor] = kwargs['data']
+        N: int = kwargs['N_dimensions']
+        # Extract numerical values from tensors
+        numerical_data = torch.stack(list(data.values())).numpy()
+        pca = PCA(n_components=N)
+        pca.fit(numerical_data)
+        transformed_data = pca.transform(numerical_data)
+        # Create a dictionary with IDs as keys and transformed data as values for overview
+        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
         
+        return result_dict
+    
+    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
+        '''
+        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
+        values are lists of corresponding IDs assigned to each cluster.
+
+        Parameters:
+            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
+            corresponding cluster labels.
+
+        Returns:
+            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
+            lists of IDs assigned to each cluster.
+        '''
+        label_id_dict = {}
+        for id_, cluster in id_label_dict.items():
+            cluster_name = f"Cluster {cluster + 1}"
+            if cluster_name not in label_id_dict:
+                label_id_dict[cluster_name] = []
+            label_id_dict[cluster_name].append(id_)
+
+        return label_id_dict
+    
+    def run(self, **kwargs):
+        version = kwargs['summarization_version'] if 'summarization_version' in kwargs else -1        
         return super().run(version, **kwargs)
 
 
@@ -37,21 +81,6 @@ class SummerizationKmeans(SummarizationParent):
     def __init__(self) -> None:
         self.version: float | str = 1.0
         self.name: str = "PCA_Kmeans"
-        
-    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
-        data: dict[int, tensor] = kwargs['data']
-        N: int = kwargs['N_dimensions']
-        # Extract numerical values from tensors
-        numerical_data = torch.stack(list(data.values())).numpy()
-
-        pca = PCA(n_components=N)
-        pca.fit(numerical_data)
-        transformed_data = pca.transform(numerical_data)
-
-        # Create a dictionary with IDs as keys and transformed data as values for overview
-        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
-        
-        return result_dict
     
     def apply_kmeans(self, **kwargs) -> Dict[str, List[int]]:
         '''
@@ -76,30 +105,6 @@ class SummerizationKmeans(SummarizationParent):
         id_label_dict = dict(zip(data.keys(), kmeans.labels_))
 
         label_id_dict = self._create_label_id_dict(id_label_dict)
-
-        return label_id_dict
-        
-    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
-        '''
-        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
-        values are lists of corresponding IDs assigned to each cluster.
-
-        Parameters:
-            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
-            corresponding cluster labels.
-
-        Returns:
-            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
-            lists of IDs assigned to each cluster.
-        '''
-    
-        label_id_dict = {}
-
-        for id_, cluster in id_label_dict.items():
-            cluster_name = f"Cluster {cluster + 1}"
-            if cluster_name not in label_id_dict:
-                label_id_dict[cluster_name] = []
-            label_id_dict[cluster_name].append(id_)
 
         return label_id_dict
     
@@ -142,33 +147,7 @@ class SummerizationHierarchy(SummarizationParent):
     '''
     def __init__(self) -> None:
         self.version: float | str = 1.1
-        self.name: str = "PCA_Hierical"
-        
-    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
-        '''
-        Applies Principal Component Analysis (PCA) on the input data.
-
-        Parameters:
-            data (dict[int, tensor]): A dictionary where keys are IDs, and values are tensors.
-            N (int): The number of principal components to retain.
-
-        Returns:
-            dict[int, list[float]]: A dictionary where keys are IDs, and values are lists
-            of transformed data after PCA.
-        '''
-        data: dict[int, tensor] = kwargs['data']
-        N: int = kwargs['N_dimensions']
-        # Extract numerical values from tensors
-        numerical_data = torch.stack(list(data.values())).numpy()
-
-        pca = PCA(n_components=N)
-        pca.fit(numerical_data)
-        transformed_data = pca.transform(numerical_data)
-
-        # Create a dictionary with IDs as keys and transformed data as values for overview
-        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
-        
-        return result_dict
+        self.name: str = "PCA_Hierical"   
     
     def apply_hierarchical(self, **kwargs) -> Dict[str, List[int]]:
         '''
@@ -190,35 +169,10 @@ class SummerizationHierarchy(SummarizationParent):
         self.hierarchical.fit_predict(list(data.values()))
         # self.hierarchical = hierarchical  # Set the kmeans attribute
         id_label_dict = dict(zip(data.keys(), self.hierarchical.labels_))
-
         label_id_dict = self._create_label_id_dict(id_label_dict)
 
         return label_id_dict
 
-    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
-        '''
-        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
-        values are lists of corresponding IDs assigned to each cluster.
-
-        Parameters:
-            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
-            corresponding cluster labels.
-
-        Returns:
-            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
-            lists of IDs assigned to each cluster.
-        '''
-    
-        label_id_dict = {}
-
-        for id_, cluster in id_label_dict.items():
-            cluster_name = f"Cluster {cluster + 1}"
-            if cluster_name not in label_id_dict:
-                label_id_dict[cluster_name] = []
-            label_id_dict[cluster_name].append(id_)
-
-        return label_id_dict
-    
     def get_cluster_centers(self, **kwargs) -> dict[int, str]:
         '''
         Calculates representative cluster centers for each cluster in the hierarchical clustering results.
@@ -276,34 +230,8 @@ class SummerizationDensity(SummarizationParent):
     def __init__(self) -> None:
         self.version: float | str = 1.2
         self.name: str = "PCA_Hierical"
-        
-    def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
-        '''
-        Applies Principal Component Analysis (PCA) on the input data.
-
-        Parameters:
-            data (dict[int, tensor]): A dictionary where keys are IDs, and values are tensors.
-            N (int): The number of principal components to retain.
-
-        Returns:
-            dict[int, list[float]]: A dictionary where keys are IDs, and values are lists
-            of transformed data after PCA.
-        '''
-        data: dict[int, tensor] = kwargs['data']
-        N: int = kwargs['N_dimensions']
-        # Extract numerical values from tensors
-        numerical_data = torch.stack(list(data.values())).numpy()
-
-        pca = PCA(n_components=N)
-        pca.fit(numerical_data)
-        transformed_data = pca.transform(numerical_data)
-
-        # Create a dictionary with IDs as keys and transformed data as values for overview
-        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
-        
-        return result_dict
     
-    def apply_density_clustering(self, **kwargs) -> Dict[str, List[int]]:
+    def apply_density(self, **kwargs) -> Dict[str, List[int]]:
         '''
         Applies Density Clustering on the input data.
 
@@ -329,30 +257,6 @@ class SummerizationDensity(SummarizationParent):
 
         return label_id_dict
 
-    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
-        '''
-        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
-        values are lists of corresponding IDs assigned to each cluster.
-
-        Parameters:
-            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
-            corresponding cluster labels.
-
-        Returns:
-            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
-            lists of IDs assigned to each cluster.
-        '''
-    
-        label_id_dict = {}
-
-        for id_, cluster in id_label_dict.items():
-            cluster_name = f"Cluster {cluster + 1}"
-            if cluster_name not in label_id_dict:
-                label_id_dict[cluster_name] = []
-            label_id_dict[cluster_name].append(id_)
-
-        return label_id_dict
-    
     def get_cluster_centers(self, **kwargs) -> dict[int, str]:
         '''
         Calculates representative cluster centers for each cluster in the density clustering results.
@@ -445,30 +349,6 @@ class SummerizationTSNE(SummarizationParent):
         label_id_dict = self._create_label_id_dict(id_label_dict)
 
         return label_id_dict
-        
-    def _create_label_id_dict(self, id_label_dict: Dict[int, int]) -> Dict[str, List[int]]:
-        '''
-        Creates a dictionary where keys are cluster names in the format "Cluster X" and 
-        values are lists of corresponding IDs assigned to each cluster.
-
-        Parameters:
-            id_label_dict (Dict[int, int]): A dictionary where keys are IDs and values are
-            corresponding cluster labels.
-
-        Returns:
-            Dict[str, List[int]]: A dictionary where keys are cluster names and values are
-            lists of IDs assigned to each cluster.
-        '''
-    
-        label_id_dict = {}
-
-        for id_, cluster in id_label_dict.items():
-            cluster_name = f"Cluster {cluster + 1}"
-            if cluster_name not in label_id_dict:
-                label_id_dict[cluster_name] = []
-            label_id_dict[cluster_name].append(id_)
-
-        return label_id_dict
     
     def get_cluster_centers(self, **kwargs) -> dict[int, str]:
         data: dict[int, list[float]] = kwargs['data']
@@ -501,7 +381,7 @@ if __name__ == "__main__":
     
     summarization = SummarizationParent()
     all_points, centers = summarization.run(
-        summarization_version=1.1,
+        summarization_version=2.0,
         data=data,
         N_dimensions=3,
         N_clusters=4
