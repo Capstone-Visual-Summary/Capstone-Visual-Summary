@@ -18,7 +18,7 @@ class DatabaseParent(GrandParent):
     def run(self, **kwargs)-> tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]: # type: ignore
         version = kwargs['database_version'] if 'database_version' in kwargs else -1
         
-        return super().run(version, **kwargs)
+        return super().run(version, **kwargs) # type: ignore
 
 # class DatabaseADDMETHODNAME(DatabaseParent):
 #     def __init__(self) -> None:
