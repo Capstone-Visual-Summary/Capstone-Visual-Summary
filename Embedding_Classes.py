@@ -9,6 +9,7 @@ import torch.nn as nn
 import csv
 import ast
 from torchvision import transforms
+from torchvision.models.resnet import ResNet152_Weights
 
 class EmbeddingParent(GrandParent):
     def __init__(self) -> None:
@@ -93,7 +94,7 @@ class EmbeddingResNet_2_0(EmbeddingParent):
         self.name: str = "EmbeddingResNet 2.0" 
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
-        resnet152 = models.resnet152(pretrained=True)
+        resnet152 = models.resnet152(weights=ResNet152_Weights.IMAGENET1K_V1)
         resnet152.eval()
 
         # Define the transformations
@@ -159,7 +160,7 @@ class EmbeddingResNet_2_1(EmbeddingParent):
         self.name: str = "EmbeddingResNet 2.1 with triplet loss" 
     
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
-        resnet152 = models.resnet152(pretrained=True)
+        resnet152 = models.resnet152(weights=ResNet152_Weights.IMAGENET1K_V1)
         resnet152.eval()
 
         # Define the transformations
@@ -171,7 +172,7 @@ class EmbeddingResNet_2_1(EmbeddingParent):
 
         modules = list(resnet152.children())[:-2] #-2 without avgpool and fc
         resnet152 = nn.Sequential(*modules)
-        
+
         img = Image.open(image).convert('RGB')
         img = transform(img)
         vec = torch.tensor(resnet152(img.unsqueeze(0))) 

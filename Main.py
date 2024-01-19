@@ -5,7 +5,7 @@ from Visualization_Classes import VisualizationParent
 
 from geopandas import GeoDataFrame
 from tqdm import tqdm
-print('Ivar is een goede gast')
+
 def OneRUNtoRUNthemALL(**kwargs):
 	"""
 	Runs a series of operations on the given input parameters.
@@ -69,7 +69,7 @@ def OneRUNtoRUNthemALL(**kwargs):
 
 	summaries = dict()
 
-	for neighbourhood_id in embedding_neighbourhood:
+	for neighbourhood_id in tqdm(embedding_neighbourhood):
 		# summaries is of type: tuple[dict[str, list[str]], dict[str, str]], so tuple[clusters, centroids]
 		summaries[str(neighbourhood_id)] = summarization_parent.run(data=embedding_neighbourhood[str(neighbourhood_id)], **kwargs)
 	
@@ -77,11 +77,11 @@ def OneRUNtoRUNthemALL(**kwargs):
 		visualization_parent.run(summary = summaries[neighbourhood_id], images = images, **kwargs)
 	print('DONE')
  
-
-OneRUNtoRUNthemALL(database_version = 2.2, start_hood = 1, stop_hood = 2, step_size = 1, 
-				   embedder_version = 1.0, rerun = False, 
-				   summarization_version = 1.0, K_images = 5, N_clusters = 5, N_dimensions = 5, 
-				   visualization_version = 1.0, visualize = True,
-				   file_name = '')
+if __name__ == '__main__':
+	OneRUNtoRUNthemALL(database_version = 1.0, start_hood = 7, stop_hood = 8, step_size = 1, 
+						embedder_version = 1.0, rerun = False, 
+						summarization_version = 1.0, K_images = 5, N_clusters = 5, N_dimensions = 5, 
+						visualization_version = 1.0, visualize = True,
+						file_name = '')
 
 

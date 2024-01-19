@@ -8,6 +8,7 @@ from torch.utils.data import Dataset
 import os
 import random
 import matplotlib.pyplot as plt
+from torchvision.models.resnet import ResNet152_Weights
 
 num_epochs = 10  # Define the number of epochs
 embedding_dimension = 128
@@ -28,7 +29,7 @@ class TripletLoss(nn.Module):
 class ResNet152Embedding(nn.Module):
     def __init__(self):
         super(ResNet152Embedding, self).__init__()
-        resnet152 = models.resnet152(pretrained=True)
+        resnet152 = models.resnet152(weights=ResNet152_Weights.IMAGENET1K_V1)
         # Keep all layers except the final fully connected layer
         self.features = nn.Sequential(*list(resnet152.children())[:-2])
         self.adaptive_pool = nn.AdaptiveAvgPool2d((1, 1))
