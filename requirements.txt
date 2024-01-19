@@ -11,3 +11,5 @@ tqdm==0.4.6
 h3==3.7.6
 h3pandas==0.2.6
 umap-learn==0.5.1
+umap==0.1.1
+umap-learn==0.5.1
