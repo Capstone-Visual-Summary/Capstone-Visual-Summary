@@ -54,7 +54,7 @@ class SummarizationParent(GrandParent):
             clusters = k.split(' ')[1]  # Extract the cluster number from the key
             output[k] = {
                 'selected': centers['Centroid Cluster ' + str(int(clusters) - 1)],  # Get the corresponding center
-                'cluster': set(v)  # Convert the list to a set
+                'cluster': v
             }
         return output
 
@@ -504,7 +504,7 @@ if __name__ == "__main__":
     test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
 
-    print(compare_times(data))
+    # print(compare_times(data))
         
     summarization = SummarizationParent()
     output = summarization.run(
@@ -514,7 +514,7 @@ if __name__ == "__main__":
         N_clusters=4
     )
     
-    # print(output.keys())
+    print(output)
     # pretty_print(all_points, centers)
     
 #Example Output
