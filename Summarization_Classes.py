@@ -288,6 +288,7 @@ class SummerizationPCAKmeans(SummarizationParent, DimensionalityReducer, Cluster
         pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
         kmeans = self.apply_kmeans(data=pca_data, N_clusters=n_clusters, seed=42)
         centers = self.get_kmeans_centre(data=pca_data)
+        
         return kmeans, centers
     
 ########################################## 1.1 ##########################################################  
@@ -390,7 +391,7 @@ class SummerizationTSNEDensity(SummarizationParent, DimensionalityReducer, Clust
 
 class SummerizationUMAPKmeans(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = 3.0
+        self.version: float | str = '3.0WIP'
         self.name: str = "UMAP_Kmeans"
 
     def run(self, **kwargs):
@@ -406,7 +407,7 @@ class SummerizationUMAPKmeans(SummarizationParent, DimensionalityReducer, Cluste
 
 class SummerizationUMAPHierarchy(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = 3.1
+        self.version: float | str = '3.1WIP'
         self.name: str = "UMAP_Hierical"
 
     def run(self, **kwargs):
@@ -422,7 +423,7 @@ class SummerizationUMAPHierarchy(SummarizationParent, DimensionalityReducer, Clu
 
 class SummerizationUMAPDensity(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = 3.2
+        self.version: float | str = '3.2WIP'
         self.name: str = "UMAP_Density"
 
     def run(self, **kwargs):
@@ -466,7 +467,7 @@ def compare_times(data) -> pd.DataFrame:
     '''	
     returns a dataframe with the time taken to run each version of the summarization algorithm
     '''	
-    dimensionality_reducers = ['PCA', 'TSNE', 'UMAP']
+    dimensionality_reducers = ['PCA', 'TSNE']
     clusterers = ['Kmeans', 'Hierical', 'Density']
     
     versions = {}
@@ -494,18 +495,30 @@ if __name__ == "__main__":
     test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
 
-    print(compare_times(data))
+    # print(compare_times(data))
         
-    # summarization = SummarizationParent()
-    # all_points, centers = summarization.run(
-    #     summarization_version=1.2,
-    #     data=data,
-    #     N_dimensions=5,
-    #     N_clusters=4
-    # )
+    summarization = SummarizationParent()
+    all_points, centers = summarization.run(
+        summarization_version=1.0,
+        data=data,
+        N_dimensions=5,
+        N_clusters=4
+    )
     
+    output = {}
+    for k, v in all_points.items():
+        cluster_number = k.split(' ')[1]  # Extract the cluster number from the key
+        output[k] = {
+            'selected': centers['Centroid Cluster ' + str(int(cluster_number) - 1)],  # Get the corresponding center
+            'cluster': set(v)  # Convert the list to a set
+        }
+    
+    print(output)
     # pretty_print(all_points, centers)
 
 #Example Output
-#{'Cluster 0': ['53568', '53570', '53572', '53574'], 'Cluster 1': ['53569', '53573'], 'Cluster 2': ['53571'], 'Cluster 3': ['53575']}
-#{'Centroid Cluster 0': '53570', 'Centroid Cluster 1': '53569', 'Centroid Cluster 2': '53571', 'Centroid Cluster 3': '53575'}
+#{
+# 'Cluster 4': {'selected': 4130, 'cluster': {4096, 4362, 4366, 4370, 4372, 4374, 4378, 4380, 4126, 4382, 4384, 4130, 4387, 4388, 4389, 4134, 4392, 4393, 4138, 4396, 4142, 4399, 4400, 4401, 4404, 4405, 4408, 4411, 4412, 4413, 4419, 4338, 4342, 4350}},
+# 'Cluster 1': {'selected': 4120, 'cluster': {4097, 4098, 4099, 4353, 4358, 4359, 4367, 4120, 4121, 4122, 4123, 4124, 4125, 4127, 4128, 4129, 4383, 4131, 4132, 4133, 4136, 4137, 4139, 4140, 4141, 4143, 4416}},
+# 'Cluster 3': {'selected': 4386, 'cluster': {4385, 4386, 4390, 4391, 4135, 4394, 4395, 4397, 4398, 4402, 4403, 4406, 4407, 4409, 4410, 4414, 4415, 4417, 4418}}
+#}
