@@ -3,7 +3,7 @@ from Grand_Parent import GrandParent
 
 import math as math
 import matplotlib.pyplot as plt
-from PIL import Image
+from PIL import Image, ImageOps
 
 class VisualizationParent(GrandParent):
     def __init__(self) -> None:
@@ -38,15 +38,19 @@ class VisualizationShow(VisualizationParent):
         
         index = 0
 
-        for i in summary[1]:
+        colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'pink', 'gray']
+
+        for x, i in enumerate(summary[1]):
             img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + images.loc[(images['img_id_com'] == int(summary[1][i])), 'path'].iloc[0])
+            img = ImageOps.expand(img, border=50, fill=colors[x])
             axs[math.floor(index/width)][index % width].imshow(img)
             axs[math.floor(index/width)][index % width].axis('off')
             index +=1
         
-        for cluster in summary[0]:
+        for x, cluster in enumerate(summary[0]):
             for image_id in summary[0][cluster]:
                 img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + images.loc[(images['img_id_com'] == int(image_id)), 'path'].iloc[0])
+                img = ImageOps.expand(img, border=50, fill=colors[x])
                 axs[math.floor(index/width)][index % width].imshow(img)
                 axs[math.floor(index/width)][index % width].axis('off')
                 index +=1
