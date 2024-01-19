@@ -107,7 +107,8 @@ class EmbeddingResNet_2_0(EmbeddingParent):
         resnet152 = nn.Sequential(*modules)
         
         img = Image.open(image).convert('RGB')
-        vec = torch.tensor(img2vec.get_vec(img))
+        img = transform(img)
+        vec = torch.tensor(resnet152(img.unsqueeze(0))) 
         return vec
         
     def run(self, **kwargs):
@@ -138,6 +139,69 @@ class EmbeddingResNet_2_0(EmbeddingParent):
             image_embedding = self.Image2Vec_embedder_ResNet50(path)
         else:
             image_embedding = self.Image2Vec_embedder_ResNet152(path)
+
+        self.image_embeddings[str(kwargs['image_id'])] = image_embedding
+
+        with open(file_name, mode='w', newline='') as csvfile:
+            csv_writer = csv.DictWriter(csvfile, fieldnames=['image_id', 'tensor'])
+
+            if csvfile.tell() == 0:
+                csv_writer.writeheader()
+
+            for image_id, tensor in self.image_embeddings.items():
+                csv_writer.writerow({'image_id': image_id, 'tensor': tensor.tolist()})
+            
+        return image_embedding
+
+class EmbeddingResNet_2_1(EmbeddingParent):
+    def __init__(self) -> None:
+        self.version: float | str = '2.1 WIP'
+        self.name: str = "EmbeddingResNet 2.1 with triplet loss" 
+    
+    def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
+        resnet152 = models.resnet152(pretrained=True)
+        resnet152.eval()
+
+        # Define the transformations
+        transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+
+        modules = list(resnet152.children())[:-2] #-2 without avgpool and fc
+        resnet152 = nn.Sequential(*modules)
+        
+        img = Image.open(image).convert('RGB')
+        img = transform(img)
+        vec = torch.tensor(resnet152(img.unsqueeze(0))) 
+        return vec
+        
+    def run(self, **kwargs):
+        if 'file_name' in kwargs and kwargs['file_name'] != '':
+            file_name = f"Embedding Files/" + kwargs['file_name']
+        else:
+            version_split = str(self.version).split('.')
+            file_name = f'Embedding Files/Embeddings_{version_split[0]}_{version_split[1]}_0.csv'
+
+        if not hasattr(self, 'image_embeddings'):
+            try:
+                with open(file_name, mode='r', newline='') as csvfile:
+                    temp = csv.DictReader(csvfile)
+                    
+                self.image_embeddings = dict()
+                
+                for row in temp:
+                    self.image_embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
+            except:
+                self.image_embeddings = dict()
+        
+        if str(kwargs['image_id']) in self.image_embeddings:
+            return self.image_embeddings[str(kwargs['image_id'])]
+        
+        path = 'U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + kwargs['img_path']
+        
+        image_embedding = self.Image2Vec_embedder_ResNet152(path)
 
         self.image_embeddings[str(kwargs['image_id'])] = image_embedding
 
