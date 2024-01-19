@@ -48,6 +48,16 @@ class SummarizationParent(GrandParent):
 
         return label_id_dict
     
+    def generate_output_dict(self, clusters, centers):
+        output = {}
+        for k, v in clusters.items():
+            clusters = k.split(' ')[1]  # Extract the cluster number from the key
+            output[k] = {
+                'selected': centers['Centroid Cluster ' + str(int(clusters) - 1)],  # Get the corresponding center
+                'cluster': set(v)  # Convert the list to a set
+            }
+        return output
+
     def run(self, **kwargs):
         version = kwargs['summarization_version'] if 'summarization_version' in kwargs else -1        
         return super().run(version, **kwargs)
@@ -237,7 +247,7 @@ class CentreFinder:
                     min_distance = dist
                     center_image_id = image_id
 
-            cluster_centers[f'Mean Center Cluster {cluster_id + 1}'] = center_image_id
+            cluster_centers[f'Centroid Cluster {cluster_id}'] = center_image_id
 
         return cluster_centers
     
@@ -270,7 +280,7 @@ class CentreFinder:
                     min_distance = dist
                     center_image_id = image_id
 
-            cluster_centers[f'Mean Center Cluster {cluster_id + 1}'] = center_image_id
+            cluster_centers[f'Centroid Cluster {cluster_id}'] = center_image_id
 
         return cluster_centers
 
@@ -288,8 +298,7 @@ class SummerizationPCAKmeans(SummarizationParent, DimensionalityReducer, Cluster
         pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
         kmeans = self.apply_kmeans(data=pca_data, N_clusters=n_clusters, seed=42)
         centers = self.get_kmeans_centre(data=pca_data)
-        
-        return kmeans, centers
+        return self.generate_output_dict(kmeans, centers)
     
 ########################################## 1.1 ##########################################################  
 
@@ -313,7 +322,7 @@ class SummerizationPCAHierarchy(SummarizationParent, DimensionalityReducer, Clus
         pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
         hierarchical = self.apply_hierarchical(data=pca_data, n_clusters=N_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=pca_data)
-        return hierarchical, centers
+        return self.generate_output_dict(hierarchical, centers)
     
 ########################################## 1.2 ########################################################## 
 
@@ -337,7 +346,7 @@ class SummerizationPCADensity(SummarizationParent, DimensionalityReducer, Cluste
         pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
         density = self.apply_density(data=pca_data, n_clusters=n_clusters, seed=42)
         centers = self.get_density_centre(data=pca_data)
-        return density, centers
+        return self.generate_output_dict(density, centers)
 
 ########################################## 2.0 ##########################################################
 
@@ -353,7 +362,7 @@ class SummerizationTSNEKmeans(SummarizationParent, DimensionalityReducer, Cluste
         TSNE_data = self.apply_TSNE(data=data, N_dimensions=N_dimensions)
         kmeans = self.apply_kmeans(data=TSNE_data, N_clusters=N_clusters, seed=42)
         centers = self.get_kmeans_centre(data=TSNE_data)
-        return kmeans, centers
+        return self.generate_output_dict(kmeans, centers)
 
 ########################################## 2.1 ##########################################################
 
@@ -369,7 +378,7 @@ class SummerizationTSNEHierarchy(SummarizationParent, DimensionalityReducer, Clu
         TSNE_data = self.apply_TSNE(data=data, N_dimensions=N_dimensions)
         hierarchical = self.apply_hierarchical(data=TSNE_data, n_clusters=N_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=TSNE_data)
-        return hierarchical, centers
+        return self.generate_output_dict(hierarchical, centers)
 
 ########################################## 2.2 ##########################################################
 
@@ -385,7 +394,7 @@ class SummerizationTSNEDensity(SummarizationParent, DimensionalityReducer, Clust
         TSNE_data = self.apply_TSNE(data=data, N_dimensions=N_dimensions)
         density = self.apply_density(data=TSNE_data, n_clusters=N_clusters, seed=42)
         centers = self.get_density_centre(data=TSNE_data)
-        return density, centers
+        return self.generate_output_dict(density, centers)
 
 ########################################## 3.0 ##########################################################
 
@@ -401,7 +410,7 @@ class SummerizationUMAPKmeans(SummarizationParent, DimensionalityReducer, Cluste
         UMAP_data = self.apply_UMAP(data=data, N_dimensions=N_dimensions, seed=42)
         kmeans = self.apply_kmeans(data=UMAP_data, N_clusters=N_clusters, seed=42)
         centers = self.get_kmeans_centre(data=UMAP_data)
-        return kmeans, centers
+        return self.generate_output_dict(kmeans, centers)
 
 ########################################## 3.1 ##########################################################
 
@@ -417,7 +426,7 @@ class SummerizationUMAPHierarchy(SummarizationParent, DimensionalityReducer, Clu
         UMAP_data = self.apply_UMAP(data=data, N_dimensions=N_dimensions, seed=42)
         hierarchical = self.apply_hierarchical(data=UMAP_data, n_clusters=N_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=UMAP_data)
-        return hierarchical, centers
+        return self.generate_output_dict(hierarchical, centers)
 
 ########################################## 3.2 ##########################################################
 
@@ -433,7 +442,7 @@ class SummerizationUMAPDensity(SummarizationParent, DimensionalityReducer, Clust
         UMAP_data = self.apply_UMAP(data=data, N_dimensions=N_dimensions, seed=42)
         density = self.apply_density(data=UMAP_data, n_clusters=N_clusters, seed=42)
         centers = self.get_density_centre(data=UMAP_data)
-        return density, centers
+        return self.generate_output_dict(density, centers)
 
 #########################################################################################################
 
@@ -450,7 +459,7 @@ def time_version(**kwargs) -> float:
     version = kwargs['summarization_version']
     
     times = []
-    for _ in range(10):
+    for _ in range(5):
         start_time = time.perf_counter()
         summarization.run(
             summarization_version=version,
@@ -495,27 +504,19 @@ if __name__ == "__main__":
     test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
 
-    # print(compare_times(data))
+    print(compare_times(data))
         
     summarization = SummarizationParent()
-    all_points, centers = summarization.run(
-        summarization_version=1.0,
+    output = summarization.run(
+        summarization_version=1.1,
         data=data,
         N_dimensions=5,
         N_clusters=4
     )
     
-    output = {}
-    for k, v in all_points.items():
-        cluster_number = k.split(' ')[1]  # Extract the cluster number from the key
-        output[k] = {
-            'selected': centers['Centroid Cluster ' + str(int(cluster_number) - 1)],  # Get the corresponding center
-            'cluster': set(v)  # Convert the list to a set
-        }
-    
-    print(output)
+    # print(output.keys())
     # pretty_print(all_points, centers)
-
+    
 #Example Output
 #{
 # 'Cluster 4': {'selected': 4130, 'cluster': {4096, 4362, 4366, 4370, 4372, 4374, 4378, 4380, 4126, 4382, 4384, 4130, 4387, 4388, 4389, 4134, 4392, 4393, 4138, 4396, 4142, 4399, 4400, 4401, 4404, 4405, 4408, 4411, 4412, 4413, 4419, 4338, 4342, 4350}},
