@@ -78,10 +78,10 @@ def OneRUNtoRUNthemALL(**kwargs):
 	print('DONE')
  
 if __name__ == '__main__':
-	OneRUNtoRUNthemALL(database_version = 1.0, start_hood = 7, stop_hood = 8, step_size = 1, 
-						embedder_version = 1.0, rerun = False, 
-						summarization_version = 1.0, K_images = 5, N_clusters = 5, N_dimensions = 5, 
-						visualization_version = 1.0, visualize = True,
-						file_name = '')
+	OneRUNtoRUNthemALL(database_version=1.0, start_hood=7, stop_hood=8, step_size=1,
+                       embedder_version=1.0, max_files=1000,
+                       summarization_version=1.0, K_images=5, N_clusters=5, N_dimensions=5,
+                       visualization_version=1.0, visualize=True,
+                       file_name='')
 
 
