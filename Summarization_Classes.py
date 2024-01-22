@@ -1,12 +1,13 @@
 import ast
+import random
 import torch
 from typing import Union, List, Dict
 from Grand_Parent import GrandParent
 import pandas as pd
 from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans, AgglomerativeClustering
+from sklearn.cluster import KMeans, AgglomerativeClustering, OPTICS
 from scipy.spatial import distance
-from torch import tensor
+from torch import norm, normal, tensor
 import torch
 import os
 from scipy.spatial import distance
@@ -191,10 +192,10 @@ class Clusterer:
             and values are lists of corresponding IDs assigned to each cluster.
         '''
         data: dict[int, list[float]] = kwargs['data']
-        n_clusters: int = kwargs['n_clusters']
+        min_samples: int = kwargs['min_samples'] if 'min_samples' in kwargs else 5
         # Assuming a suitable density clustering method is used here
         # Modify the following line accordingly
-        self.density = AgglomerativeClustering(n_clusters=n_clusters)
+        self.density = OPTICS(min_samples=min_samples)
         self.density.fit_predict(list(data.values()))
 
         id_label_dict = dict(zip(data.keys(), self.density.labels_))
@@ -342,9 +343,10 @@ class SummerizationPCADensity(SummarizationParent, DimensionalityReducer, Cluste
     def run(self, **kwargs):
         data = kwargs['data']
         N_pca_d = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
-        n_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
+        min_samples: int = kwargs['min_samples'] if 'min_samples' in kwargs else 5
+        
         pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
-        density = self.apply_density(data=pca_data, n_clusters=n_clusters, seed=42)
+        density = self.apply_density(data=pca_data, min_samples=min_samples)
         centers = self.get_density_centre(data=pca_data)
         return self.generate_output_dict(density, centers)
 
@@ -390,9 +392,10 @@ class SummerizationTSNEDensity(SummarizationParent, DimensionalityReducer, Clust
     def run(self, **kwargs):
         data = kwargs['data']
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
-        N_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
+        min_samples: int = kwargs['min_samples'] if 'min_samples' in kwargs else 5
+        
         TSNE_data = self.apply_TSNE(data=data, N_dimensions=N_dimensions)
-        density = self.apply_density(data=TSNE_data, n_clusters=N_clusters, seed=42)
+        density = self.apply_density(data=TSNE_data, min_samples=min_samples)
         centers = self.get_density_centre(data=TSNE_data)
         return self.generate_output_dict(density, centers)
 
@@ -438,9 +441,10 @@ class SummerizationUMAPDensity(SummarizationParent, DimensionalityReducer, Clust
     def run(self, **kwargs):
         data = kwargs['data']
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
-        N_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
+        min_samples: int = kwargs['min_samples'] if 'min_samples' in kwargs else 5
+        
         UMAP_data = self.apply_UMAP(data=data, N_dimensions=N_dimensions, seed=42)
-        density = self.apply_density(data=UMAP_data, n_clusters=N_clusters, seed=42)
+        density = self.apply_density(data=UMAP_data, min_samples=min_samples)
         centers = self.get_density_centre(data=UMAP_data)
         return self.generate_output_dict(density, centers)
 
@@ -493,29 +497,28 @@ def compare_times(data) -> pd.DataFrame:
     
     return pd.DataFrame.from_dict(times, orient='index', columns=['Mean Time', 'Standard Deviation'])
 
-def pretty_print(all_points, centers):
-    for key in sorted(all_points.keys()):
-        print(f"{key}: {all_points[key]}")
-    for key in sorted(centers.keys()):
-        print(f"{key}: {centers[key]}")
+def pretty_print(output):
+    for key in sorted(output.keys(), key=lambda x:int(x.split(' ')[1])):
+        print(f"{key}: {output[key]}")
 
 if __name__ == "__main__":
     
-    test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv')
+    test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv', delimiter=',')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
 
-    # print(compare_times(data))
+    print(compare_times(data))
         
     summarization = SummarizationParent()
     output = summarization.run(
-        summarization_version=1.1,
+        summarization_version=1.2,
         data=data,
-        N_dimensions=5,
-        N_clusters=4
+        N_dimensions=10,
+        N_clusters=4,
+        min_samples=6
     )
     
-    print(output)
-    # pretty_print(all_points, centers)
+    # print(output)
+    pretty_print(output)
     
 #Example Output
 #{
