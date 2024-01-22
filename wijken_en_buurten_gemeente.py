@@ -8,7 +8,10 @@ wijken_en_buurten = wijken_en_buurten[wijken_en_buurten['GM_NAAM'] == 'Delft']
 # filter op de kolommen die we nodig hebben
 wijken_en_buurten = wijken_en_buurten[['BU_NAAM', 'geometry']]
 
+# verander het coordinaten systeem
+wijken_en_buurten = wijken_en_buurten.to_crs(epsg=4326)
+
 # Export the GeoDataFrame as a GeoJSON file
 wijken_en_buurten.to_file("Geo-JSON Files\wijken_en_buurten.geojson", driver='GeoJSON')
 
-print(wijken_en_buurten)
+print(wijken_en_buurten.head())
