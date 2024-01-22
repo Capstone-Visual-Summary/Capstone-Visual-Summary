@@ -16,8 +16,10 @@ def OneRUNtoRUNthemALL(**kwargs):
 			- start_hood (int): The starting neighborhood ID. Defaults to 0.
 			- stop_hood (int): The stopping neighborhood ID. Defaults to the total number of neighborhoods.
 			- step_size (int): The step size for iterating over the neighborhoods. Defaults to 1.
+			- start_year (int): From what year onwards the images should be from. Defualts to 2008.
+			- end_year (int): Until (inclusive) what year the images should be from. Defualts to 2022.
 			- embedder_version (float): The version of the embedder to use. Defaults to the newest version.
-			- rerun (bool): Whether to rerun the embedder. Defaults to False.
+			- max_files (int): Limits the number of embedding files loaded to memory. Defaults to 1000.
 			- summarization_version (float): The version of the summarization algorithm to use. Defaults to the newest version.
 			- K_images (int): The number of images to include in each summary. Defaults to 5.
 			- N_clusters (int): The number of clusters to create in the summarization algorithm. Defaults to 3.
@@ -62,6 +64,8 @@ def OneRUNtoRUNthemALL(**kwargs):
 		image_ids = neighbourhood_images[neighbourhood_id]
 
 		for image_id in image_ids:
+			# TODO Remove path input to embeddings as embeddings are no longer made during runtime for v1.x
+            #  remove once v2.x has support for this
 			path = images.loc[(images['img_id_com'] == image_id), 'path'].iloc[0]
 			embeddings[str(image_id)] = embedding_parent.run(image_id=image_id, img_path=path, **kwargs) # list[float]
 		
@@ -78,7 +82,7 @@ def OneRUNtoRUNthemALL(**kwargs):
 	print('DONE')
  
 if __name__ == '__main__':
-	OneRUNtoRUNthemALL(database_version=1.0, start_hood=7, stop_hood=8, step_size=1,
+	OneRUNtoRUNthemALL(database_version=1.0, start_hood=7, stop_hood=8, step_size=1, start_year=2021, end_year=2022,
                        embedder_version=1.0, max_files=1000,
                        summarization_version=1.0, K_images=5, N_clusters=5, N_dimensions=5,
                        visualization_version=1.0, visualize=True,
