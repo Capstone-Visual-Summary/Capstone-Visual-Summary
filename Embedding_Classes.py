@@ -66,7 +66,7 @@ class EmbeddingResNet(EmbeddingParent):
         if file_name in self.files_in_memory:
             return self.image_embeddings[str(kwargs['image_id'])]
 
-        max_files = max(1, int(kwargs['max_files'])) if 'max_files' in kwargs else 1
+        max_files = int(kwargs['max_files']) if 'max_files' in kwargs and int(kwargs['max_files']) >= 1 else 100
 
         if len(self.files_in_memory) == max_files:
             lower_bound = int(self.files_in_memory[0].split('_')[3].split('_')[0])
@@ -81,7 +81,6 @@ class EmbeddingResNet(EmbeddingParent):
         else:
             self.files_in_memory.append(file_name)
 
-        print('loading new file')
         try:
             with open(file_name, mode='r', newline='', encoding='utf-8') as csvfile:
                 temp = csv.DictReader(csvfile, delimiter=';')
