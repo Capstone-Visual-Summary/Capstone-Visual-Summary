@@ -6,7 +6,7 @@ from Visualization_Classes import VisualizationParent
 from geopandas import GeoDataFrame
 from tqdm import tqdm
 
-def OneRUNtoRUNthemALL(**kwargs) -> None:
+def OneRUNtoRUNthemALL(**kwargs):
 	"""
 	Runs a series of operations on the given input parameters.
 
@@ -56,9 +56,11 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
 	embedding_neighbourhood = dict()
 
 	for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images)):
+		
 		if int(neighbourhood_id) not in range(start_hood, stop_hood, step_size):
 			continue
 
+		print('Embedding neighbourhood:', neighbourhood_id)
 		embeddings = dict()
 
 		image_ids = neighbourhood_images[neighbourhood_id]
@@ -71,21 +73,26 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
 		
 		embedding_neighbourhood[neighbourhood_id] = embeddings
 
+	
+	print(embedding_neighbourhood)
+
 	summaries = dict()
 
 	for neighbourhood_id in tqdm(embedding_neighbourhood):
-		# summaries is of type: dict[str, dict[str, str | list[str]]], so summaries[neighbourhood_id] = {Cluster X: {selected: image_id, cluster: [image_ids]}}
+		print('summarizing neighbourhood:', neighbourhood_id)
+		# summaries is of type: tuple[dict[str, list[str]], dict[str, str]], so tuple[clusters, centroids]
 		summaries[str(neighbourhood_id)] = summarization_parent.run(data=embedding_neighbourhood[str(neighbourhood_id)], **kwargs)
-
+	
 	for neighbourhood_id in embedding_neighbourhood:
-		visualization_parent.run(summary = summaries[neighbourhood_id], images = images, **kwargs)
+		print('viusalising neighbourhood:', neighbourhood_id)
+		visualization_parent.run(summary = summaries[neighbourhood_id], embeddings=embedding_neighbourhood, neighbourhood_id=neighbourhood_id, images = images, **kwargs)
 	print('DONE')
  
 if __name__ == '__main__':
-	OneRUNtoRUNthemALL(database_version=1.0, start_hood=7, stop_hood=8, step_size=1, start_year=2008, end_year=2022,
+	OneRUNtoRUNthemALL(database_version=1.0, start_hood=7, stop_hood=8, step_size=1, #start_year=2008, end_year=2022,
                        embedder_version=1.0, max_files=1000,
-                       summarization_version=1.2, K_images=5, N_clusters=5, N_dimensions=5, min_samples=6,
-                       visualization_version=1.0, visualize=True,
+                       summarization_version=1.0, K_images=5, N_clusters=5, N_dimensions=5,
+                       visualization_version=1.2, visualize=True,
                        file_name='')
 
 
