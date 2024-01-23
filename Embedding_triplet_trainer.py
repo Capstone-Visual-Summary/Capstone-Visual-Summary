@@ -49,25 +49,15 @@ class EmbeddingDataset(Dataset):
         self.transform = transform
         self.files_in_memory = []
         self.image_embeddings = dict()
-        self.file_mapping = self.create_file_mapping()
 
-    def create_file_mapping(self):
-        # Create a mapping from a tuple of (lower_bound, upper_bound) to filename
-        file_mapping = {}
-        for filename in os.listdir(self.embeddings_folder):
-            if filename.startswith('Embeddings_v1_0_') and filename.endswith('.csv'):
-                parts = filename.replace('Embeddings_v1_0_', '').replace('.csv', '').split('_')
-                if len(parts) == 2:
-                    lower, upper = int(parts[0]), int(parts[1])
-                    file_mapping[(lower, upper)] = filename
-        return file_mapping
+    def get_file_path(self, version, img_id_com):
+        version_split = str(version).split('.')
+        version_str = f'v{version_split[0]}_{version_split[1]}'
 
-    def get_file_path(self, image_id):
-        # Find the filename by checking which (lower_bound, upper_bound) tuple the image_id falls into
-        for (lower, upper), filename in self.file_mapping.items():
-            if lower <= image_id <= upper:
-                return os.path.join(self.embeddings_folder, filename)
-        return None
+        files = ['Embedding Files/' + f for f in os.listdir('Embedding Files') if version_str in f]
+        files = sorted(files, key=lambda x: int(x.split('_')[3].split('_')[0]))
+
+        return files[int(img_id_com) // 2392]
 
     def __getitem__(self, idx):
         anchor_id, positive_id, negative_id = self.df_triplets.iloc[idx]
@@ -82,7 +72,7 @@ class EmbeddingDataset(Dataset):
         return len(self.df_triplets)
 
     def load_embedding(self, image_id):
-        file_name = self.get_file_path(image_id)
+        file_name = self.get_file_path(1.0, image_id)
 
         if len(self.files_in_memory) == 100:
             lower_bound = int(self.files_in_memory[0].split('_')[3].split('_')[0])
@@ -138,7 +128,7 @@ epoch_losses = []
 for epoch in range(num_epochs):
     resnet152.train()
     total_loss = 0
-    print('epoch 1')
+    
     for batch_idx, (anchor, positive, negative) in enumerate(dataloader):
         anchor, positive, negative = anchor.to(device), positive.to(device), negative.to(device)
 
