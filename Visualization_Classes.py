@@ -16,6 +16,7 @@ import geopandas as gpd
 from keplergl import KeplerGl
 import webbrowser
 import os
+from sklearn.decomposition import PCA
 
 
 class VisualizationParent(GrandParent):
@@ -91,40 +92,12 @@ class VisualizationPLT(VisualizationParent):
                 axs[row+1][col].axis('off')
 
         plt.show()
-
-
-
-class VisualizationCOLOR(VisualizationParent):
-    def __init__(self) -> None:
-        self.version: float | str = '1.1 WIP'
-        self.name: str = "PLT"
-
-    def run(self, **kwargs):
-        summary = kwargs['summary']
-        images = kwargs['images']
-
-        data: temp[int, tensor] = kwargs['embeddings']
-        # Check if the number of dimensions is not larger than the number of data points
-        key = list(data.keys())[0]
-        max_dimensions = min(len(data[key]), len(data))
-        N: int = kwargs['N_dimensions'] if kwargs['N_dimensions'] < max_dimensions else max_dimensions
-        # Extract numerical values from tensors
-        numerical_data = torch.stack(list(data.values())).numpy()
-        pca = PCA(n_components=N)
-        pca.fit(numerical_data)
-        transformed_data = pca.transform(numerical_data)
-        # Create a dictionary with IDs as keys and transformed data as values for overview
-        result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
-
-        return result_dict
-    
-
-        
+  
 
 class VisualizationPLT2(VisualizationParent):
     def __init__(self) -> None:
-        self.version: float | str = 1.2
-        self.name: str = "PLT"
+        self.version: float | str = 1.1
+        self.name: str = "PLT2"
 
     def run(self, **kwargs):
         summary = kwargs['summary']
@@ -263,15 +236,55 @@ if __name__ == '__main__':
     # image_embeddings = dict()
     # image_embeddings['7'] = embeddings
 
-    # Test = VisualizationPLT2()
+    # Test = VisualizationCOLOR()
     # Test.run(summary = summary['7'], embeddings=image_embeddings, neighbourhood_id='7', images = images)
 
     Test = VisualizationInteractiveMapBorder()
     Test.run()
     
 
+# def train_pca_on_data(dict_of_dicts):
+#     # Flatten the tuples into a list
+#     data = [tup for subdict in dict_of_dicts.values() for tup in subdict.values()]
+
+#     # Train PCA model
+#     pca = PCA(n_components=3)
+#     pca.fit(data)
+#     return pca
+
+# def transform_tuples_with_pca(pca, tuple_list):
+#     # Transform the list of tuples using the trained PCA
+#     transformed_data = pca.transform(tuple_list)
+#     return transformed_data
+
+# def average_of_transformed(dict_of_dicts, pca):
+#     averages = {}
+#     for key, subdict in dict_of_dicts.items():
+#         transformed_data = transform_tuples_with_pca(pca, list(subdict.values()))
+#         averages[key] = np.mean(transformed_data, axis=0)
+#     return averages
+
+# Example usage
+# dict_of_dicts = {'category1': {'item1': (1,2,3), 'item2': (4,5,6)}, 'category2': {'item3': (7,8,9)}}
+# pca_model = train_pca_on_dict(dict_of_dicts)
+# transformed_averages = average_of_transformed(dict_of_dicts, pca_model)
+
+
 # ----------------
     
+
+        # # Check if the number of dimensions is not larger than the number of data points
+    # key = list(data.keys())[0]
+    # max_dimensions = min(len(data[key]), len(data))
+    # N: int = kwargs['N_dimensions'] if kwargs['N_dimensions'] < max_dimensions else max_dimensions
+    # # Extract numerical values from tensors
+    # numerical_data = torch.stack(list(data.values())).numpy()
+    # pca = PCA(n_components=N)
+    # pca.fit(numerical_data)
+    # transformed_data = pca.transform(numerical_data)
+    # # Create a dictionary with IDs as keys and transformed data as values for overview
+    # result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
+    #return result_dict
 
     # Create a figure
     # fig = plt.figure(figsize=(10, 10), facecolor='black')
