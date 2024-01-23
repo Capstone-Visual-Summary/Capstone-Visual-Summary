@@ -135,3 +135,17 @@ class DatabaseUberHexSize9(DatabaseParent):
         neighbourhood_pairs_file = 'Geo-JSON Files/neighbourhoods_v2_2.json'
         
         return self.neighbourhood_pairs(images_file, neighbourhoods_info_file, neighbourhood_pairs_file, **kwargs)
+
+
+class DatabaseGISData(DatabaseParent):
+    def __init__(self) -> None:
+        self.version: float | str = 3.0
+        self.name: str = "GIS Wijken En Buurten"
+
+    def run(self, **kwargs) -> tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]: # type: ignore
+        images_file = 'Geo-JSON Files/image_info.geojson'
+        neighbourhoods_info_file = 'Geo-JSON Files/neighbourhood_info_v3_0.geojson'
+        neighbourhood_pairs_file = 'Geo-JSON Files/neighbourhoods_v3_0.json'
+        
+        return self.neighbourhood_pairs(images_file, neighbourhoods_info_file, neighbourhood_pairs_file, **kwargs)
+    

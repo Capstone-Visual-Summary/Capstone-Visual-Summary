@@ -6,7 +6,7 @@ from Visualization_Classes import VisualizationParent
 from geopandas import GeoDataFrame
 from tqdm import tqdm
 
-def OneRUNtoRUNthemALL(**kwargs):
+def OneRUNtoRUNthemALL(**kwargs) -> None:
 	"""
 	Runs a series of operations on the given input parameters.
 
@@ -74,17 +74,17 @@ def OneRUNtoRUNthemALL(**kwargs):
 	summaries = dict()
 
 	for neighbourhood_id in tqdm(embedding_neighbourhood):
-		# summaries is of type: tuple[dict[str, list[str]], dict[str, str]], so tuple[clusters, centroids]
+		# summaries is of type: dict[str, dict[str, str | list[str]]], so summaries[neighbourhood_id] = {Cluster X: {selected: image_id, cluster: [image_ids]}}
 		summaries[str(neighbourhood_id)] = summarization_parent.run(data=embedding_neighbourhood[str(neighbourhood_id)], **kwargs)
-	
+
 	for neighbourhood_id in embedding_neighbourhood:
 		visualization_parent.run(summary = summaries[neighbourhood_id], images = images, **kwargs)
 	print('DONE')
  
 if __name__ == '__main__':
-	OneRUNtoRUNthemALL(database_version=1.0, start_hood=7, stop_hood=8, step_size=1, start_year=2021, end_year=2022,
+	OneRUNtoRUNthemALL(database_version=1.0, start_hood=7, stop_hood=8, step_size=1, start_year=2008, end_year=2022,
                        embedder_version=1.0, max_files=1000,
-                       summarization_version=1.0, K_images=5, N_clusters=5, N_dimensions=5,
+                       summarization_version=1.2, K_images=5, N_clusters=5, N_dimensions=5, min_samples=6,
                        visualization_version=1.0, visualize=True,
                        file_name='')
 
