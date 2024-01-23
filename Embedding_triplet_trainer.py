@@ -13,6 +13,7 @@ import pandas as pd
 import torch.optim as optim
 import ast
 import numpy as np
+import csv
 
 # Triplet Loss
 class TripletLoss(nn.Module):
@@ -46,14 +47,16 @@ class EmbeddingDataset(Dataset):
         self.df_triplets = pd.read_csv(triplets_file)
         self.embeddings_folder = embeddings_folder
         self.transform = transform
+        self.files_in_memory = []
+        self.image_embeddings = dict()
         self.file_mapping = self.create_file_mapping()
 
     def create_file_mapping(self):
         # Create a mapping from a tuple of (lower_bound, upper_bound) to filename
         file_mapping = {}
         for filename in os.listdir(self.embeddings_folder):
-            if filename.startswith('Embeddings_v1_') and filename.endswith('.csv'):
-                parts = filename.replace('Embeddings_v1_', '').replace('.csv', '').split('_')
+            if filename.startswith('Embeddings_v1_0_') and filename.endswith('.csv'):
+                parts = filename.replace('Embeddings_v1_0_', '').replace('.csv', '').split('_')
                 if len(parts) == 2:
                     lower, upper = int(parts[0]), int(parts[1])
                     file_mapping[(lower, upper)] = filename
@@ -80,15 +83,34 @@ class EmbeddingDataset(Dataset):
 
     def load_embedding(self, image_id):
         file_name = self.get_file_path(image_id)
-        if file_name is not None:
-            embeddings_df = pd.read_csv(file_name, delimiter=';', header=None, skiprows=1)
-            embedding_row = embeddings_df[embeddings_df[0] == str(image_id)].iloc[0, 1]
-            embedding_list = ast.literal_eval(embedding_row)  # parse list-like string into actual list
-            embedding = np.array(embedding_list, dtype=np.float32)  # convert list to numpy array
-            return torch.from_numpy(embedding)  # convert numpy array to torch tensor
+
+        if len(self.files_in_memory) == 100:
+            lower_bound = int(self.files_in_memory[0].split('_')[3].split('_')[0])
+            upper_bound = int(self.files_in_memory[0].split('_')[4].split('.')[0]) + 1
+
+            for i in range(lower_bound, upper_bound):
+                del self.image_embeddings[int(i)]
+
+            del self.files_in_memory[0]
+
+            self.files_in_memory.append(file_name)
         else:
-            # Handle the case where the file is not found
-            print(f"Embedding file for image_id {image_id} not found.")
+            self.files_in_memory.append(file_name)
+
+        try:
+            with open(file_name, mode='r', newline='', encoding='utf-8') as csvfile:
+                temp = csv.DictReader(csvfile, delimiter=';')
+
+                for row in temp:
+                    self.image_embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
+        except FileNotFoundError:
+            raise FileNotFoundError(f'Could not find file: {file_name}, please check if you have it downloaded')
+
+        if str(image_id) in self.image_embeddings:
+            return self.image_embeddings[str(image_id)]
+
+        if str(image_id) not in self.image_embeddings:
+            raise ValueError(f"Embedding of {image_id} not found. Please check {file_name} to see if it is included")
 
 # Assuming the correct device is set (e.g., "cuda" if a GPU is available)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -116,6 +138,7 @@ epoch_losses = []
 for epoch in range(num_epochs):
     resnet152.train()
     total_loss = 0
+    print('epoch 1')
     for batch_idx, (anchor, positive, negative) in enumerate(dataloader):
         anchor, positive, negative = anchor.to(device), positive.to(device), negative.to(device)
 
