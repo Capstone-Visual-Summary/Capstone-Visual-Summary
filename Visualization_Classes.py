@@ -124,6 +124,7 @@ class VisualizationPLT2(VisualizationParent):
             # Top subplot for the single image with a title and bottom title
             path = images.loc[(images['img_id_com'] == int(summary[cluster]['selected'])), 'path'].iloc[0]
             img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + path)
+            #img = Image.open('TEST.png')
             ax_top = fig.add_subplot(outer_grid[0, i])
             ax_top.imshow(img)
             ax_top.set_title(path, color='white')
@@ -143,6 +144,7 @@ class VisualizationPLT2(VisualizationParent):
                         path = images.loc[(images['img_id_com'] == int(summary[cluster]['cluster'][j])), 'path'].iloc[0]
                         # print(path)
                         img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + path)
+                        #img = Image.open('TEST.png')
                         ax_nested.imshow(img)
                 ax_nested.axis('off')
                 fig.add_subplot(ax_nested)
@@ -151,48 +153,26 @@ class VisualizationPLT2(VisualizationParent):
         plt.subplots_adjust(wspace=0.01, hspace=0.01)
         plt.show()
 
-        # fig = plt.figure(figsize=(15, 10))
-        # fig.patch.set_facecolor('#404040')  # Set the figure background color    
+        #create a second plot only containing the summary
+        fig = plt.figure(figsize=(n_clusters * 5, 5), facecolor='#404040')
 
-        # # Define the main layout
-        # outer_grid = gridspec.GridSpec(1, n_clusters, wspace=0.1, hspace=0.1)
+         # Define the main layout
+        outer_grid = gridspec.GridSpec(1, n_clusters, wspace=0.1, hspace=0.1)
 
-        # # Iterate over the main columns
-        # for i, cluster in enumerate(summary):
-        #     # Create a 1x2 grid for each main column
-        #     inner_grid = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=outer_grid[i], hspace=0.01)
+        # Iterate over the main columns
+        for i, cluster in enumerate(summary):
+            # Top subplot for the single image with a title and bottom title
+            path = images.loc[(images['img_id_com'] == int(summary[cluster]['selected'])), 'path'].iloc[0]
+            img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + path)
+            #img = Image.open('TEST.png')
+            ax_top = fig.add_subplot(outer_grid[0, i])
+            ax_top.imshow(img)
+            ax_top.set_title(path, color='white')
+            ax_top.axis('off')
 
-        #     # Top subplot for the single image
-        #     ax_top = plt.Subplot(fig, inner_grid[0])
-        #     path = images.loc[(images['img_id_com'] == int(summary[cluster]['selected'])), 'path'].iloc[0]
-        #     img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + path)
-        #     ax_top.imshow(img)
-        #     ax_top.set_title(path)
-        #     ax_top.axis('off')
-        #     fig.add_subplot(ax_top)
-
-        #     # Bottom subplot for the grid of images
-        #     ax_bottom = plt.Subplot(fig, inner_grid[1])
-        #     ax_bottom.axis('off')
-        #     fig.add_subplot(ax_bottom)
-
-        #     # Create a nested grid within the bottom subplot
-        #     nested_grid = gridspec.GridSpecFromSubplotSpec(col_height, col_width, subplot_spec=inner_grid[1], wspace=0.05, hspace=0.05)
-
-        #     # Populate the nested grid with images
-        #     for j in range(col_height * col_width):
-        #         ax_nested = plt.Subplot(fig, nested_grid[j])
-        #         if j < len(summary[cluster]['cluster']):
-        #             path = images.loc[(images['img_id_com'] == int(summary[cluster]['cluster'][j])), 'path'].iloc[0]
-        #             # print(path)
-        #             img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + path)
-        #             ax_nested.imshow(img)
-        #         ax_nested.axis('off')
-        #         fig.add_subplot(ax_nested)
-
-        # plt.subplots_adjust(wspace=0.1, hspace=0.1)
-        # plt.show()
-        
+        # Adjust layout
+        plt.subplots_adjust(wspace=0.01, hspace=0.01)
+        plt.show()
 
 
 if __name__ == '__main__':
