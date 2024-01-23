@@ -1,5 +1,6 @@
 from typing import Union
 from Grand_Parent import GrandParent
+from KeplerGL_Config import generate_config
 
 import math as math
 import matplotlib.pyplot as plt
@@ -12,18 +13,46 @@ import numpy as np
 import csv
 import ast
 import geopandas as gpd
-
+from keplergl import KeplerGl
+import webbrowser
+import os
 
 
 class VisualizationParent(GrandParent):
     def __init__(self) -> None:
         self.type = "Visulization"
-        self.children: temp[str, temp[str, Union[str, VisualizationParent]]] = temp()
+        self.children: dict[str, dict[str, Union[str, VisualizationParent]]] = dict()
         self.children_names: set[int] = set()
 
     def run(self, **kwargs):
         version = kwargs['visualization_version'] if 'visualization_version' in kwargs else -1
         return super().run(version, **kwargs)
+    
+    def min_max_colors_opacity(self, unprocessed_data) -> dict[str, tuple[torch.Tensor, float]]:
+        global_min_color: float | torch.Tensor = float('inf')
+        global_max_color: float | torch.Tensor = -float('inf')
+        global_min_opacity = float('inf')
+        global_max_opacity = -float('inf')
+
+        for neighbourhood_id, color_tensor in unprocessed_data.items():
+            global_min_color = torch.min(color_tensor[0]) if torch.min(color_tensor[0]) < global_min_color else global_min_color
+            global_max_color = torch.max(color_tensor[0]) if torch.max(color_tensor[0]) > global_max_color else global_max_color
+            global_min_opacity = color_tensor[1] if color_tensor[1] < global_min_opacity else global_min_opacity
+            global_max_opacity = color_tensor[1] if color_tensor[1] > global_max_opacity else global_max_opacity
+
+        normalized_data = dict()
+
+        for neighbourhood_id, color_tensor in unprocessed_data.items():
+            normalized_tensor = (unprocessed_data[neighbourhood_id][0] - global_min_color) / (global_max_color - global_min_color) * 255
+
+            if global_min_opacity < 0.2:
+                normalized_opacity = (unprocessed_data[neighbourhood_id][1] * (1 - 0.2) + 0.2)
+            else:
+                normalized_opacity = max((unprocessed_data[neighbourhood_id][1] - global_min_opacity) / (global_max_opacity - global_min_opacity), 0.2)
+            
+            normalized_data[neighbourhood_id] = (normalized_tensor, normalized_opacity)
+        
+        return normalized_data
 
         
 class VisualizationPLT(VisualizationParent):
@@ -175,23 +204,71 @@ class VisualizationPLT2(VisualizationParent):
         plt.show()
 
 
+class VisualizationInteractiveMapBorder(VisualizationParent):
+    def __init__(self) -> None:
+        self.version: float | str = '3.0WIP'
+        self.name: str = 'Interactive Map Accurarcy Border'
+
+    def run(self, **kwargs):
+        # TODO ADD PICTURE SUMMARY PER NEIGHBOURHOOD
+        # neighbourhoods = kwargs['neighbourhoods']
+        neighbourhoods = gpd.read_file('Geo-JSON Files/neighbourhood_info_v3_0.geojson')
+        neighbourhoods['<img>-summary'] = 'Figure_1.png'
+
+        visualization_data = {
+            '7': (torch.Tensor([0.45, 0.9, 0.1]), 0.55),
+            '8': (torch.Tensor([0.88, 0.4, 0.2]), 0.67),
+            '9': (torch.Tensor([0, 1.2, 0.5]), 0.67)
+        } # TODO CORRECT THIS
+        normalized_data = self.min_max_colors_opacity(visualization_data)
+
+        map_neighbourhoods_vis_data = dict()
+
+        if 'BU_NAAM' in neighbourhoods:
+            for neighbourhood_id in visualization_data:
+                bu_naam = neighbourhoods.loc[(neighbourhoods['neighbourhood_id'] == int(neighbourhood_id)), 'BU_NAAM'].iloc[0]
+                map_neighbourhoods_vis_data[bu_naam] = normalized_data[neighbourhood_id]
+        else:
+            map_neighbourhoods_vis_data = normalized_data
+        
+        colors = {key: value[0].tolist() for key, value in map_neighbourhoods_vis_data.items()}
+        opacity = {key: value[1] for key, value in map_neighbourhoods_vis_data.items()}
+
+        config = generate_config(colors, opacity, border_opacity=True)
+
+        visual_map = KeplerGl(height=400, config=config)
+
+        for neighbourhood_id in map_neighbourhoods_vis_data:
+            if 'BU_NAAM' in neighbourhoods:
+                visual_map.add_data(neighbourhoods.loc[neighbourhoods['BU_NAAM'] == neighbourhood_id], name=neighbourhood_id)
+            else:
+                visual_map.add_data(neighbourhoods.loc[neighbourhoods['neighbourhood_id'] == int(neighbourhood_id)], name=neighbourhood_id)
+        
+        visual_map.save_to_html(file_name='Output.html')
+
+        webbrowser.open('file://' + os.path.abspath('Output.html'), new=2)
+
+
 if __name__ == '__main__':
-    summary = {'7': {'Cluster 0': {'selected': '52616', 'cluster': ['52616', '52617', '52620', '52621', '52624', '52625', '52628', '52629', '52630', '52631', '52632', '52634', '52635', '52268', '52269', '52270', '52271', '52272', '52273', '52274', '52276', '52278', '52280', '52281', '52282', '52284', '52285', '52286']}, 'Cluster 1': {'selected': '52277', 'cluster': ['52618', '52619', '52622', '52623', '52626', '52627', '52633', '52275', '52277', '52279', '52283', '52287']}}}
+    # summary = {'7': {'Cluster 0': {'selected': '52616', 'cluster': ['52616', '52617', '52620', '52621', '52624', '52625', '52628', '52629', '52630', '52631', '52632', '52634', '52635', '52268', '52269', '52270', '52271', '52272', '52273', '52274', '52276', '52278', '52280', '52281', '52282', '52284', '52285', '52286']}, 'Cluster 1': {'selected': '52277', 'cluster': ['52618', '52619', '52622', '52623', '52626', '52627', '52633', '52275', '52277', '52279', '52283', '52287']}}}
     
-    images = gpd.read_file('Hardcoded_Images.geojson')
+    # images = gpd.read_file('Hardcoded_Images.geojson')
     
-    embeddings = dict()
-    with open('Hardcoded_Embeddings.csv', mode='r', newline='', encoding='utf-8') as csvfile:
-        temp = csv.DictReader(csvfile, delimiter=';')
-        for row in temp:
-            embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
+    # embeddings = dict()
+    # with open('Hardcoded_Embeddings.csv', mode='r', newline='', encoding='utf-8') as csvfile:
+    #     temp = csv.DictReader(csvfile, delimiter=';')
+    #     for row in temp:
+    #         embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
     
-    image_embeddings = dict()
-    image_embeddings['7'] = embeddings
+    # image_embeddings = dict()
+    # image_embeddings['7'] = embeddings
 
-    Test = VisualizationPLT2()
-    Test.run(summary = summary['7'], embeddings=image_embeddings, neighbourhood_id='7', images = images)
+    # Test = VisualizationPLT2()
+    # Test.run(summary = summary['7'], embeddings=image_embeddings, neighbourhood_id='7', images = images)
 
+    Test = VisualizationInteractiveMapBorder()
+    Test.run()
+    
 
 # ----------------
     
