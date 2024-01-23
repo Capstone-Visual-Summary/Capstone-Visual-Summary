@@ -15,6 +15,7 @@ import numpy as np
 from sklearn.manifold import TSNE
 import time
 from umap import UMAP
+from tqdm import tqdm
 
 
 # I don't know why, but otherwise I'm getting an error
@@ -202,6 +203,20 @@ class Clusterer:
         label_id_dict = self._create_label_id_dict(id_label_dict)
 
         return label_id_dict
+
+class ClusterFinder:
+    def find_clusters(self, **kwargs) -> int:
+        data = kwargs['data']
+        
+        max_cluster = 0
+        for i in tqdm(range(2, 30)):
+            density = self.apply_density(data=data, min_samples=i)
+            if len(density) > max_cluster and len(density) < 10:
+                max_cluster = len(density)
+                print(f'found {max_cluster} clusters at {i} min_samples')
+                
+        return max_cluster
+
 
 class CentreFinder:
     def get_kmeans_centre(self, **kwargs) -> dict[int, str]:
@@ -448,8 +463,67 @@ class SummerizationUMAPDensity(SummarizationParent, DimensionalityReducer, Clust
         centers = self.get_density_centre(data=UMAP_data)
         return self.generate_output_dict(density, centers)
 
-#########################################################################################################
+########################################## 4.0 ##########################################################
 
+class SummerizationPCADensityKmeans(SummarizationParent, DimensionalityReducer, Clusterer, ClusterFinder, CentreFinder):
+    def __init__(self) -> None:
+        self.version: float | str = 4.0
+        self.name: str = "PCA_Density_Kmeans"
+
+    def run(self, **kwargs):
+        data = kwargs['data']
+        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        
+        pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
+        N_clusters = self.find_clusters(data=pca_data)
+        if N_clusters == 0:
+            print('No reasonable number of clusters found, using default value of 5')
+            N_clusters = 5
+        kmeans = self.apply_kmeans(data=pca_data, N_clusters=N_clusters, seed=42)
+        centers = self.get_kmeans_centre(data=pca_data)
+        return self.generate_output_dict(kmeans, centers)
+
+########################################## 4.1 ##########################################################
+
+class SummerizationPCADensityDensity(SummarizationParent, DimensionalityReducer, Clusterer, ClusterFinder, CentreFinder):
+    def __init__(self) -> None:
+        self.version: float | str = 4.1
+        self.name: str = "PCA_Density_Density"
+
+    def run(self, **kwargs):
+        data = kwargs['data']
+        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        
+        pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
+        N_clusters = self.find_clusters(data=pca_data)
+        if N_clusters == 0:
+            print('No reasonable number of clusters found, using default value of 5')
+            N_clusters = 5
+        density = self.apply_density(data=pca_data, min_samples=3, seed=42)
+        centers = self.get_density_centre(data=pca_data)
+        return self.generate_output_dict(density, centers)
+
+########################################## 4.1 ##########################################################
+
+class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer, Clusterer, ClusterFinder, CentreFinder):
+    def __init__(self) -> None:
+        self.version: float | str = 4.2
+        self.name: str = "PCA_Density_Hirarchy"
+
+    def run(self, **kwargs):
+        data = kwargs['data']
+        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        
+        pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
+        N_clusters = self.find_clusters(data=pca_data)
+        if N_clusters == 0:
+            print('No reasonable number of clusters found, using default value of 5')
+            N_clusters = 5
+        hierarchical = self.apply_hierarchical(data=pca_data, min_samples=3, seed=42)
+        centers = self.get_hierarchical_centre(data=pca_data)
+        return self.generate_output_dict(hierarchical, centers)
+
+#########################################################################################################
 def time_version(**kwargs) -> float:
     '''
     Returns the time taken to run the summarization algorithm with the given version.
@@ -506,11 +580,11 @@ if __name__ == "__main__":
     test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv', delimiter=',')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
 
-    print(compare_times(data))
+    # print(compare_times(data))
         
     summarization = SummarizationParent()
     output = summarization.run(
-        summarization_version=1.2,
+        summarization_version= 4.1,
         data=data,
         N_dimensions=10,
         N_clusters=4,
@@ -519,6 +593,8 @@ if __name__ == "__main__":
     
     # print(output)
     pretty_print(output)
+    
+    print('DONE')
     
 #Example Output
 #{
