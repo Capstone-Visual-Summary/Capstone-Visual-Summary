@@ -14,6 +14,9 @@ import torch.optim as optim
 import ast
 import numpy as np
 import csv
+import time
+from sklearn.model_selection import train_test_split
+
 
 # Triplet Loss
 class TripletLoss(nn.Module):
@@ -114,7 +117,18 @@ transform = transforms.Compose([
 
 # Replace 'path_to_triplets.csv' and 'path_to_embeddings_folder' with your actual paths
 dataset = EmbeddingDataset(triplets_file='Triplets.csv', embeddings_folder='Embedding Files', transform=transform)
-dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+# Define the sizes of train, validation, and test sets
+train_size = int(0.7 * len(dataset))
+val_size = int(0.15 * len(dataset))
+test_size = len(dataset) - train_size - val_size
+
+# Use random_split to split the dataset
+train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
+
+# Define the dataloaders for train, validation, and test sets
+train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
 # Model and optimizer
 resnet152 = ResNet152Embedding().to(device)
@@ -124,12 +138,16 @@ criterion = TripletLoss(margin=1.0)
 # Training loop
 num_epochs = 20  # Define the number of epochs
 epoch_losses = []
+val_losses = []
+epoch_times = []
 
 for epoch in range(num_epochs):
     resnet152.train()
     total_loss = 0
     
-    for batch_idx, (anchor, positive, negative) in enumerate(dataloader):
+    start_time = time.time()  # Start time of the epoch
+
+    for batch_idx, (anchor, positive, negative) in enumerate(train_dataloader):
         anchor, positive, negative = anchor.to(device), positive.to(device), negative.to(device)
 
         optimizer.zero_grad()
@@ -143,21 +161,59 @@ for epoch in range(num_epochs):
 
         total_loss += loss.item()
 
-    average_loss = total_loss / len(dataloader)
+    epoch_time = time.time() - start_time  # Time taken for the epoch
+    epoch_times.append(epoch_time)
+
+    # Calculate validation loss
+    resnet152.eval()
+    val_loss = 0
+
+    with torch.no_grad():
+        for val_batch_idx, (val_anchor, val_positive, val_negative) in enumerate(val_dataloader):
+            val_anchor, val_positive, val_negative = val_anchor.to(device), val_positive.to(device), val_negative.to(device)
+
+            val_anchor_embedding = resnet152(val_anchor)
+            val_positive_embedding = resnet152(val_positive)
+            val_negative_embedding = resnet152(val_negative)
+
+            val_loss += criterion(val_anchor_embedding, val_positive_embedding, val_negative_embedding).item()
+
+    average_loss = total_loss / len(train_dataloader)
+    val_average_loss = val_loss / len(val_dataloader)
     epoch_losses.append(average_loss)
-    print(f'Epoch {epoch+1}/{num_epochs}, Average Loss: {average_loss:.4f}')
+    val_losses.append(val_average_loss)
+    print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {average_loss:.4f}, Val Loss: {val_average_loss:.4f}, Time: {epoch_time:.2f}s')
 
-# Save the trained model
-torch.save(resnet152.state_dict(), 'resnet152_trained_triplet.pt')
+    # Save the model per epoch
+    torch.save(resnet152.state_dict(), f'resnet152_trained_triplet_epoch{epoch+1}.pt')
 
+# Save the loss and time per epoch to a CSV file
+with open('loss_and_time_per_epoch.csv', 'w', newline='') as csvfile:
+    writer = csv.writer(csvfile)
+    writer.writerow(['Epoch', 'Train Loss', 'Val Loss', 'Time'])
+    for epoch, train_loss, val_loss, time in zip(range(1, num_epochs+1), epoch_losses, val_losses, epoch_times):
+        writer.writerow([epoch, train_loss, val_loss, time])
 
-#plot the loss curve
-# Assuming epoch_losses contains the average loss of each epoch
+# Plot the loss curve
+# Assuming epoch_losses contains the average train loss of each epoch
 plt.figure(figsize=(10, 6))
-plt.plot(range(1, num_epochs + 1), epoch_losses, marker='o', linestyle='-', color='blue')
+plt.plot(range(1, num_epochs + 1), epoch_losses, marker='o', linestyle='-', color='blue', label='Train Loss')
+plt.plot(range(1, num_epochs + 1), val_losses, marker='o', linestyle='-', color='red', label='Val Loss')
 plt.title('Training Loss Curve')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
+plt.xticks(range(1, num_epochs + 1))
+plt.legend()
+plt.grid(True)
+plt.show()
+
+#plot the time curve
+# Assuming epoch_times contains the time of each epoch
+plt.figure(figsize=(10, 6))
+plt.plot(range(1, num_epochs + 1), epoch_times, marker='o', linestyle='-', color='blue')
+plt.title('Training Time Curve')
+plt.xlabel('Epoch')
+plt.ylabel('Time')
 plt.xticks(range(1, num_epochs + 1))
 plt.grid(True)
 plt.show()
