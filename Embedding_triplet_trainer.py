@@ -3,20 +3,21 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import models, transforms
-from PIL import Image
 from torch.utils.data import Dataset
 import os
-import random
 import matplotlib.pyplot as plt
-from torchvision.models.resnet import ResNet152_Weights
 import pandas as pd 
 import torch.optim as optim
 import ast
-import numpy as np
 import csv
 import time
-from sklearn.model_selection import train_test_split
+from tqdm import tqdm
+from tabulate import tabulate
 
+# Assuming the correct device is set (e.g., "cuda" if a GPU is available)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+num_triplets = 10  # Define the number of triplets to use for training (None means all triplets)
+embedding_size = 2048  # Define the embedding size (must be the same as the output of the embedding layer)
 
 # Triplet Loss
 class TripletLoss(nn.Module):
@@ -30,28 +31,44 @@ class TripletLoss(nn.Module):
         losses = F.relu(positive_distance - negative_distance + self.margin)
         return losses.mean()
 
-# ResNet152 Embedding
-class ResNet152Embedding(nn.Module):
-    def __init__(self):
-        super(ResNet152Embedding, self).__init__()
-        resnet152 = models.resnet152(weights=models.ResNet152_Weights.IMAGENET1K_V1)
-        self.features = nn.Sequential(*list(resnet152.children())[:-2])
-        self.adaptive_pool = nn.AdaptiveAvgPool2d((1, 1))
+
+# This class is to fine-tune the pre-trained ResNet152 model
+class FineTuneResNet152(nn.Module):
+    def __init__(self, feature_size, output_size):
+        super(FineTuneResNet152, self).__init__()
+        # Here we only use the fully connected layers for fine-tuning
+        self.fc = nn.Linear(feature_size, output_size)
 
     def forward(self, x):
-        x = self.features(x)
-        x = self.adaptive_pool(x)
-        x = torch.flatten(x, 1)
+        # Directly use the embeddings for fine-tuning
+        x = self.fc(x)
         return x
+    
+# Load the pre-trained ResNet152 model
+original_model = models.resnet152(pretrained=True)
+
+# Assume the output feature size of ResNet152 is 2048
+model = FineTuneResNet152(feature_size=2048, output_size=2048).to(device)
+
+# If you wish to fine-tune the entire network, set requires_grad to True
+for param in model.parameters():
+    param.requires_grad = True
+
+# Define the optimizer for the fully connected layer
+optimizer = optim.Adam(model.parameters(), lr=0.0001)
+criterion = TripletLoss(margin=1.0)
+
 
 # Custom Dataset for loading embeddings
 class EmbeddingDataset(Dataset):
-    def __init__(self, triplets_file, embeddings_folder, transform=None):
+    def __init__(self, triplets_file, embeddings_folder, num_triplets=num_triplets):
         self.df_triplets = pd.read_csv(triplets_file)
         self.embeddings_folder = embeddings_folder
-        self.transform = transform
         self.files_in_memory = []
         self.image_embeddings = dict()
+        # If num_triplets is provided, only keep that many triplets
+        if num_triplets is not None:
+            self.df_triplets = self.df_triplets[:num_triplets]
 
     def get_file_path(self, version, img_id_com):
         version_split = str(version).split('.')
@@ -64,11 +81,9 @@ class EmbeddingDataset(Dataset):
 
     def __getitem__(self, idx):
         anchor_id, positive_id, negative_id = self.df_triplets.iloc[idx]
-
         anchor_embedding = self.load_embedding(anchor_id)
         positive_embedding = self.load_embedding(positive_id)
         negative_embedding = self.load_embedding(negative_id)
-
         return anchor_embedding, positive_embedding, negative_embedding
 
     def __len__(self):
@@ -92,9 +107,9 @@ class EmbeddingDataset(Dataset):
 
         try:
             with open(file_name, mode='r', newline='', encoding='utf-8') as csvfile:
-                temp = csv.DictReader(csvfile, delimiter=';')
+                temp = list(csv.DictReader(csvfile, delimiter=';'))
 
-                for row in temp:
+                for row in tqdm(temp, desc="Loading embeddings", total=len(temp)):
                     self.image_embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
         except FileNotFoundError:
             raise FileNotFoundError(f'Could not find file: {file_name}, please check if you have it downloaded')
@@ -105,8 +120,7 @@ class EmbeddingDataset(Dataset):
         if str(image_id) not in self.image_embeddings:
             raise ValueError(f"Embedding of {image_id} not found. Please check {file_name} to see if it is included")
 
-# Assuming the correct device is set (e.g., "cuda" if a GPU is available)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 # Define transforms, dataset, and dataloader
 transform = transforms.Compose([
@@ -116,11 +130,17 @@ transform = transforms.Compose([
 ])
 
 # Replace 'path_to_triplets.csv' and 'path_to_embeddings_folder' with your actual paths
-dataset = EmbeddingDataset(triplets_file='Triplets.csv', embeddings_folder='Embedding Files', transform=transform)
+dataset = EmbeddingDataset(triplets_file='Triplets.csv', embeddings_folder='Embedding Files', num_triplets=num_triplets)
 # Define the sizes of train, validation, and test sets
 train_size = int(0.7 * len(dataset))
 val_size = int(0.15 * len(dataset))
 test_size = len(dataset) - train_size - val_size
+
+#length dataset
+print('Length of dataset: ', len(dataset))
+print('Length of train dataset: ', train_size)
+print('Length of val dataset: ', val_size)
+print('Length of test dataset: ', test_size)
 
 # Use random_split to split the dataset
 train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, val_size, test_size])
@@ -130,10 +150,19 @@ train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 test_dataloader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-# Model and optimizer
-resnet152 = ResNet152Embedding().to(device)
-optimizer = optim.Adam(resnet152.parameters(), lr=0.0001)
-criterion = TripletLoss(margin=1.0)
+# Create a list of data
+data = [
+    ['Length of train dataloader:', len(train_dataloader)],
+    ['Length of val dataloader:', len(val_dataloader)],
+    ['Length of test dataloader:', len(test_dataloader)],
+    ['Length of embeddings loaded:', len(dataset.image_embeddings)],
+    ['Length of files that need to be loaded:', len(dataset.files_in_memory)]
+]
+
+# Print the table
+print(tabulate(data, headers=['Data', 'Length']))
+
+
 
 # Training loop
 num_epochs = 20  # Define the number of epochs
@@ -141,42 +170,47 @@ epoch_losses = []
 val_losses = []
 epoch_times = []
 
-for epoch in range(num_epochs):
-    resnet152.train()
-    total_loss = 0
-    
-    start_time = time.time()  # Start time of the epoch
+#print min and max of train and val dataset
+print('Min and max of train dataset: ', min(train_dataset.indices), max(train_dataset.indices))
+print('Min and max of val dataset: ', min(val_dataset.indices), max(val_dataset.indices))
 
-    for batch_idx, (anchor, positive, negative) in enumerate(train_dataloader):
+for epoch in range(num_epochs):
+    start_time = time.time()  # Start time for the epoch
+    model.train()
+    total_loss = 0
+    progress_bar = tqdm(enumerate(train_dataloader), total=len(train_dataloader))
+    for batch_idx, (anchor, positive, negative) in progress_bar:
         anchor, positive, negative = anchor.to(device), positive.to(device), negative.to(device)
 
         optimizer.zero_grad()
-        anchor_embedding = resnet152(anchor)
-        positive_embedding = resnet152(positive)
-        negative_embedding = resnet152(negative)
+        anchor_output = model(anchor)
+        positive_output = model(positive)
+        negative_output = model(negative)
 
-        loss = criterion(anchor_embedding, positive_embedding, negative_embedding)
+        loss = criterion(anchor_output, positive_output, negative_output)
         loss.backward()
         optimizer.step()
 
         total_loss += loss.item()
+        progress_bar.set_description(f'Epoch {epoch+1}/{num_epochs} Loss: {loss.item():.4f}')
+
 
     epoch_time = time.time() - start_time  # Time taken for the epoch
     epoch_times.append(epoch_time)
 
     # Calculate validation loss
-    resnet152.eval()
+    model.eval()
     val_loss = 0
 
     with torch.no_grad():
         for val_batch_idx, (val_anchor, val_positive, val_negative) in enumerate(val_dataloader):
             val_anchor, val_positive, val_negative = val_anchor.to(device), val_positive.to(device), val_negative.to(device)
 
-            val_anchor_embedding = resnet152(val_anchor)
-            val_positive_embedding = resnet152(val_positive)
-            val_negative_embedding = resnet152(val_negative)
+            val_anchor_output = model(val_anchor)
+            val_positive_output = model(val_positive)
+            val_negative_output = model(val_negative)
 
-            val_loss += criterion(val_anchor_embedding, val_positive_embedding, val_negative_embedding).item()
+            val_loss += criterion(val_anchor_output, val_positive_output, val_negative_output).item()
 
     average_loss = total_loss / len(train_dataloader)
     val_average_loss = val_loss / len(val_dataloader)
@@ -185,7 +219,7 @@ for epoch in range(num_epochs):
     print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {average_loss:.4f}, Val Loss: {val_average_loss:.4f}, Time: {epoch_time:.2f}s')
 
     # Save the model per epoch
-    torch.save(resnet152.state_dict(), f'resnet152_trained_triplet_epoch{epoch+1}.pt')
+    torch.save(model.state_dict(), f'resnet152_trained_triplet_epoch{epoch+1}.pt')
 
 # Save the loss and time per epoch to a CSV file
 with open('loss_and_time_per_epoch.csv', 'w', newline='') as csvfile:
@@ -194,19 +228,39 @@ with open('loss_and_time_per_epoch.csv', 'w', newline='') as csvfile:
     for epoch, train_loss, val_loss, time in zip(range(1, num_epochs+1), epoch_losses, val_losses, epoch_times):
         writer.writerow([epoch, train_loss, val_loss, time])
 
-# Plot the loss curve
-# Assuming epoch_losses contains the average train loss of each epoch
-plt.figure(figsize=(10, 6))
-plt.plot(range(1, num_epochs + 1), epoch_losses, marker='o', linestyle='-', color='blue', label='Train Loss')
-plt.plot(range(1, num_epochs + 1), val_losses, marker='o', linestyle='-', color='red', label='Val Loss')
-plt.title('Training Loss Curve')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.xticks(range(1, num_epochs + 1))
-plt.legend()
-plt.grid(True)
-plt.show()
 
+#table of loss and time per epoch without loading from csv
+df = pd.DataFrame(list(zip(range(1, num_epochs+1), epoch_losses, val_losses, epoch_times))),
+columns = ['Epoch', 'Train Loss', 'Val Loss', 'Time']
+
+print(df)
+
+
+# Calculate the minimum x and y values of the train and validation set
+train_min_x = min(train_dataset.indices)
+train_max_x = max(train_dataset.indices)
+val_min_x = min(val_dataset.indices)
+val_max_x = max(val_dataset.indices)
+
+print('Min and max of train dataset: ', train_min_x, train_max_x)
+print('Min and max of val dataset: ', val_min_x, val_max_x)
+
+# Plot the time curve
+plt.figure(figsize=(10, 6))
+plt.plot(range(1, num_epochs + 1), epoch_times, marker='o', linestyle='-', color='blue')
+plt.title('Training Time Curve')
+plt.xlabel('Epoch')
+plt.ylabel('Time')
+plt.xticks(range(1, num_epochs + 1))
+plt.grid(True)
+
+# Add annotations for minimum x and y values
+plt.annotate(f'Train Min: {train_min_x}', xy=(1, train_min_x), xytext=(1, train_min_x + 10),
+             arrowprops=dict(facecolor='black', arrowstyle='->'))
+plt.annotate(f'Val Min: {val_min_x}', xy=(1, val_min_x), xytext=(1, val_min_x - 10),
+             arrowprops=dict(facecolor='black', arrowstyle='->'))
+
+plt.show()
 #plot the time curve
 # Assuming epoch_times contains the time of each epoch
 plt.figure(figsize=(10, 6))
