@@ -90,6 +90,16 @@ class DimensionalityReducer:
     
 class Clusterer:
     def apply_hierarchical(self, **kwargs) -> Dict[str, List[int]]:
+        '''
+        Creates a dendrogram of all the images using hierarchical clustering.
+
+        Parameters:
+            data (dict[int, list[float]]): A dictionary where keys are IDs, and values are lists of transformed data after PCA.
+            n_clusters (int): The number of clusters to form in the hierarchical clustering.
+
+        Returns:
+            A dictionary mapping image IDs to cluster labels, and a plot displaying the hierarchical clustering dendrogram.
+        '''
         data: dict[int, list[float]] = kwargs['data']
         n_clusters: int = kwargs['n_clusters']
 
@@ -105,12 +115,23 @@ class Clusterer:
         # Generate linkage matrix for dendrogram
         linkage_matrix = linkage(list(data.values()), method='ward')
 
+        # Set color_threshold based on the number of clusters
+        color_threshold = linkage_matrix[-(n_clusters - 1), 2]  # Adjust for 0-based indexing
+
         # Create dendrogram
-        dendrogram(linkage_matrix)
+        dendrogram(linkage_matrix, color_threshold=color_threshold)
+
+        # Add a horizontal line to mark the cut based on the number of clusters
+        cutting_line_1 = linkage_matrix[-n_clusters + 1, 2]  # Adjust for 0-based indexing
+        cutting_line_2 = linkage_matrix[-n_clusters, 2]  # Adjust for 0-based indexing
+        middle_cutting_line = (cutting_line_1 + cutting_line_2) / 2
+
+        plt.axhline(y=middle_cutting_line, color='r', linestyle='--', label=f'Cutting Line for {n_clusters} Clusters')
 
         plt.title('Hierarchical Clustering Dendrogram')
         plt.xlabel('Image IDs')
         plt.ylabel('Distance')
+        plt.legend()
         plt.show()
 
         return label_id_dict
@@ -139,6 +160,7 @@ class SummerizationPCAHirarchyDendogram(SummarizationParent, DimensionalityReduc
 
         # Apply PCA
         pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
+        print(pca_data)
 
         # Apply hierarchical clustering with dendrogram creation
         hierarchical_labels = self.apply_hierarchical(data=pca_data, n_clusters=7)
