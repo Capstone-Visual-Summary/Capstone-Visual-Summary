@@ -19,8 +19,6 @@ import matplotlib.pyplot as plt
 from Grand_Parent import GrandParent
 
 
-# I don't know why, but otherwise I'm getting an error
-os.environ["LOKY_MAX_CPU_COUNT"] = "4" 
 
 class SummarizationParent(GrandParent):
     def __init__(self) -> None:
@@ -328,7 +326,7 @@ class SummerizationPCAKmeans(SummarizationParent, DimensionalityReducer, Cluster
         centers = self.get_kmeans_centre(data=pca_data)
         return self.generate_output_dict(kmeans, centers)
     
-########################################## 1.1 ##########################################################  
+########################################## 2.0 ##########################################################  
 
 class SummerizationPCAHierarchy(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     '''
@@ -340,7 +338,7 @@ class SummerizationPCAHierarchy(SummarizationParent, DimensionalityReducer, Clus
         name (str): The name of the clustering technique followed by PCA (e.g., "PCA_Kmeans_Hierical").
     '''
     def __init__(self) -> None:
-        self.version: float | str = 1.1
+        self.version: float | str = 2.0
         self.name: str = "PCA_Hierical"   
 
     def run(self, **kwargs):
@@ -352,7 +350,7 @@ class SummerizationPCAHierarchy(SummarizationParent, DimensionalityReducer, Clus
         centers = self.get_hierarchical_centre(data=pca_data)
         return self.generate_output_dict(hierarchical, centers)
     
-########################################## 1.2 ########################################################## 
+########################################## 2.1 ########################################################## 
 
 class SummerizationPCADensity(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     '''
@@ -364,7 +362,7 @@ class SummerizationPCADensity(SummarizationParent, DimensionalityReducer, Cluste
         name (str): The name of the clustering technique followed by PCA (e.g., "PCA_Kmeans_Hierical").
     '''
     def __init__(self) -> None:
-        self.version: float | str = 1.2
+        self.version: float | str = 2.1
         self.name: str = "PCA_Density"
 
     def run(self, **kwargs):
@@ -377,11 +375,11 @@ class SummerizationPCADensity(SummarizationParent, DimensionalityReducer, Cluste
         centers = self.get_density_centre(data=pca_data)
         return self.generate_output_dict(density, centers)
 
-########################################## 2.0 ##########################################################
+########################################## 2.2 ##########################################################
 
 class SummerizationTSNEKmeans(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = 2.0
+        self.version: float | str = 2.2
         self.name: str = "TSNE_Kmeans"
 
     def run(self, **kwargs):
@@ -393,11 +391,11 @@ class SummerizationTSNEKmeans(SummarizationParent, DimensionalityReducer, Cluste
         centers = self.get_kmeans_centre(data=TSNE_data)
         return self.generate_output_dict(kmeans, centers)
 
-########################################## 2.1 ##########################################################
+########################################## 2.3 ##########################################################
 
 class SummerizationTSNEHierarchy(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = 2.1
+        self.version: float | str = 2.3
         self.name: str = "TSNE_Hierical"
 
     def run(self, **kwargs):
@@ -409,11 +407,11 @@ class SummerizationTSNEHierarchy(SummarizationParent, DimensionalityReducer, Clu
         centers = self.get_hierarchical_centre(data=TSNE_data)
         return self.generate_output_dict(hierarchical, centers)
 
-########################################## 2.2 ##########################################################
+########################################## 2.4 ##########################################################
 
 class SummerizationTSNEDensity(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = 2.2
+        self.version: float | str = 2.4
         self.name: str = "TSNE_Density"
 
     def run(self, **kwargs):
@@ -426,11 +424,11 @@ class SummerizationTSNEDensity(SummarizationParent, DimensionalityReducer, Clust
         centers = self.get_density_centre(data=TSNE_data)
         return self.generate_output_dict(density, centers)
 
-########################################## 3.0 ##########################################################
+########################################## 2.5 ##########################################################
 
 class SummerizationUMAPKmeans(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = 3.0
+        self.version: float | str = 2.5
         self.name: str = "UMAP_Kmeans"
 
     def run(self, **kwargs):
@@ -442,11 +440,11 @@ class SummerizationUMAPKmeans(SummarizationParent, DimensionalityReducer, Cluste
         centers = self.get_kmeans_centre(data=UMAP_data)
         return self.generate_output_dict(kmeans, centers)
 
-########################################## 3.1 ##########################################################
+########################################## 2.6 ##########################################################
 
 class SummerizationUMAPHierarchy(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = 3.1
+        self.version: float | str = 2.6
         self.name: str = "UMAP_Hierical"
 
     def run(self, **kwargs):
@@ -458,11 +456,11 @@ class SummerizationUMAPHierarchy(SummarizationParent, DimensionalityReducer, Clu
         centers = self.get_hierarchical_centre(data=UMAP_data)
         return self.generate_output_dict(hierarchical, centers)
 
-########################################## 3.2 ##########################################################
+########################################## 2.7 ##########################################################
 
 class SummerizationUMAPDensity(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = 3.2
+        self.version: float | str = 2.7
         self.name: str = "UMAP_Density"
 
     def run(self, **kwargs):
@@ -475,11 +473,11 @@ class SummerizationUMAPDensity(SummarizationParent, DimensionalityReducer, Clust
         centers = self.get_density_centre(data=UMAP_data)
         return self.generate_output_dict(density, centers)
 
-########################################## 4.0 ##########################################################
+########################################## 3.0 ##########################################################
 
 class SummerizationPCADensityKmeans(SummarizationParent, DimensionalityReducer, Clusterer, ClusterFinder, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = 4.0
+        self.version: float | str = 3.0
         self.name: str = "PCA_Density_Kmeans"
 
     def run(self, **kwargs):
@@ -495,11 +493,11 @@ class SummerizationPCADensityKmeans(SummarizationParent, DimensionalityReducer, 
         centers = self.get_kmeans_centre(data=pca_data)
         return self.generate_output_dict(kmeans, centers)
 
-########################################## 4.1 ##########################################################
+########################################## 3.1 ##########################################################
 
 class SummerizationPCADensityDensity(SummarizationParent, DimensionalityReducer, Clusterer, ClusterFinder, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = 4.1
+        self.version: float | str = 3.1
         self.name: str = "PCA_Density_Density"
 
     def run(self, **kwargs):
@@ -515,11 +513,11 @@ class SummerizationPCADensityDensity(SummarizationParent, DimensionalityReducer,
         centers = self.get_density_centre(data=pca_data)
         return self.generate_output_dict(density, centers)
 
-########################################## 4.2 ##########################################################
+########################################## 3.2 ##########################################################
 
 class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer, Clusterer, ClusterFinder, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = 4.2
+        self.version: float | str = 3.2
         self.name: str = "PCA_Density_Hirarchy"
 
     def run(self, **kwargs):
@@ -589,17 +587,17 @@ def compare_versions() -> pd.DataFrame:
     '''	
     returns a dataframe with the time taken to run each version of the summarization algorithm
     '''	
-    repeats = 3
+    repeats = 5
     versions = {
-        1.0 : 'PCA_Kmeans',
-        1.1 : 'PCA_Hierical',
-        1.2 : 'PCA_Density',
-        2.0 : 'TSNE_Kmeans',
-        2.1 : 'TSNE_Hierical',
-        2.2 : 'TSNE_Density',
-        3.0 : 'UMAP_Kmeans',
-        3.1 : 'UMAP_Hierical',
-        3.2 : 'UMAP_Density',
+        1.0 : 'PCA  Kmeans',
+        2.0 : 'PCA  Hierical',
+        2.1 : 'PCA  Density',
+        2.2 : 'TSNE Kmeans',
+        2.3 : 'TSNE Hierical',
+        2.4 : 'TSNE Density',
+        2.5 : 'UMAP Kmeans',
+        2.6 : 'UMAP Hierical',
+        2.7 : 'UMAP Density',
     }
     
     times = {}
@@ -632,21 +630,21 @@ if __name__ == "__main__":
     test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv', delimiter=',')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
 
-    # print(compare_versions)
+    print(compare_versions())
         
-    summarization = SummarizationParent()
-    output = summarization.run(
-        summarization_version= 4.0,
-        data=data,
-        N_dimensions=10,
-        N_clusters=4,
-        min_samples=6
-    )
+    # summarization = SummarizationParent()
+    # output = summarization.run(
+    #     summarization_version= 3.0,
+    #     data=data,
+    #     N_dimensions=10,
+    #     N_clusters=4,
+    #     min_samples=6
+    # )
     
-    # print(output)
-    pretty_print(output)
+    # # print(output)
+    # pretty_print(output)
     
-    print('DONE')
+    # print('DONE')
     
 #Example Output
 #{
