@@ -31,21 +31,34 @@ class VisualizationParent(GrandParent):
         return super().run(version, **kwargs)
     
     def min_max_colors_opacity(self, unprocessed_data) -> dict[str, tuple[torch.Tensor, float]]:
-        global_min_color: float | torch.Tensor = float('inf')
-        global_max_color: float | torch.Tensor = -float('inf')
+        # TODO Absolute opacity not relative opacity 
+
+        global_min_color_red: float | torch.Tensor = float('inf')
+        global_max_color_red: float | torch.Tensor = -float('inf')
+        global_min_color_green: float | torch.Tensor = float('inf')
+        global_max_color_green: float | torch.Tensor = -float('inf')
+        global_min_color_blue: float | torch.Tensor = float('inf')
+        global_max_color_blue: float | torch.Tensor = -float('inf')
         global_min_opacity = float('inf')
         global_max_opacity = -float('inf')
 
         for neighbourhood_id, color_tensor in unprocessed_data.items():
-            global_min_color = torch.min(color_tensor[0]) if torch.min(color_tensor[0]) < global_min_color else global_min_color
-            global_max_color = torch.max(color_tensor[0]) if torch.max(color_tensor[0]) > global_max_color else global_max_color
+            global_min_color_red = color_tensor[0][0] if color_tensor[0][0] < global_min_color_red else global_min_color_red
+            global_max_color_red = color_tensor[0][0] if color_tensor[0][0] > global_max_color_red else global_max_color_red
+            global_min_color_green = color_tensor[0][1] if color_tensor[0][1] < global_min_color_green else global_min_color_green
+            global_max_color_green = color_tensor[0][1] if color_tensor[0][1] > global_max_color_green else global_max_color_green
+            global_min_color_blue = color_tensor[0][2] if color_tensor[0][2] < global_min_color_blue else global_min_color_blue
+            global_max_color_blue = color_tensor[0][2] if color_tensor[0][2] > global_max_color_blue else global_max_color_blue
             global_min_opacity = color_tensor[1] if color_tensor[1] < global_min_opacity else global_min_opacity
             global_max_opacity = color_tensor[1] if color_tensor[1] > global_max_opacity else global_max_opacity
 
         normalized_data = dict()
 
         for neighbourhood_id, color_tensor in unprocessed_data.items():
-            normalized_tensor = (unprocessed_data[neighbourhood_id][0] - global_min_color) / (global_max_color - global_min_color) * 255
+            normalized_red = (unprocessed_data[neighbourhood_id][0][0] - global_min_color_red) / (global_max_color_red - global_min_color_red) * 255
+            normalized_green = (unprocessed_data[neighbourhood_id][0][1] - global_min_color_green) / (global_max_color_green - global_min_color_green) * 255
+            normalized_blue = (unprocessed_data[neighbourhood_id][0][2] - global_min_color_blue) / (global_max_color_blue - global_min_color_blue) * 255
+            normalized_tensor = torch.tensor([normalized_red, normalized_green, normalized_blue])
 
             if len(unprocessed_data) > 1:
                 if global_min_opacity < 0.2:
@@ -247,9 +260,9 @@ class VisualizationCOLOR(VisualizationParent):
 
         #add some functionality to only train pca once and store it as an attribute
         if not hasattr(self, 'pca'):
-            pca = self.train_pca_on_data(data)
+            self.pca = self.train_pca_on_data(data)
         
-        result = self.transform_tuples_with_pca(pca, neighbourhood_embeddings)
+        result = self.transform_tuples_with_pca(self.pca, neighbourhood_embeddings)
         color = np.mean(result, axis=0)
 
         return(color, percentage)
@@ -303,7 +316,7 @@ class VisualizationInteractiveMapBorder(VisualizationParent):
     def run(self, **kwargs):
         # TODO ADD PICTURE SUMMARY PER NEIGHBOURHOOD
         neighbourhoods = kwargs['neighbourhoods']
-        neighbourhoods['<img>-summary'] = 'Figure_1.png'
+        neighbourhoods['<img>-summary'] = 'Figure_1 Resize 2.png'
         
         map_neighbourhoods_vis_data, colors, opacity = self.process_visualization_data(**kwargs)
 
@@ -320,7 +333,7 @@ class VisualizationInteractiveMapBorderVisible(VisualizationParent):
     def run(self, **kwargs):
         # TODO ADD PICTURE SUMMARY PER NEIGHBOURHOOD
         neighbourhoods = kwargs['neighbourhoods']
-        neighbourhoods['<img>-summary'] = 'Figure_1.png'
+        neighbourhoods['<img>-summary'] = 'Figure_1 Resize 2.png'
         
         map_neighbourhoods_vis_data, colors, opacity = self.process_visualization_data(**kwargs)
 
@@ -337,7 +350,7 @@ class VisualizationInteractiveMapOnlyFill(VisualizationParent):
     def run(self, **kwargs):
         # TODO ADD PICTURE SUMMARY PER NEIGHBOURHOOD
         neighbourhoods = kwargs['neighbourhoods']
-        neighbourhoods['<img>-summary'] = 'Figure_1.png'
+        neighbourhoods['<img>-summary'] = 'Figure_1 Resize 2.png'
         
         map_neighbourhoods_vis_data, colors, opacity = self.process_visualization_data(**kwargs)
 
