@@ -21,7 +21,6 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
 			- embedder_version (float): The version of the embedder to use. Defaults to the newest version.
 			- max_files (int): Limits the number of embedding files loaded to memory. Defaults to 1000.
 			- summarization_version (float): The version of the summarization algorithm to use. Defaults to the newest version.
-			- K_images (int): The number of images to include in each summary. Defaults to 5.
 			- N_clusters (int): The number of clusters to create in the summarization algorithm. Defaults to 3.
 			- N_dimensions (int): The number of dimensions to use in the embedding algorithm. Defaults to 5.
 			- visualization_version (float): The version of the visualization algorithm to use. Defaults to the newest version.
@@ -92,9 +91,9 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
 	print('DONE')
  
 if __name__ == '__main__':
-	OneRUNtoRUNthemALL(database_version=3.0, start_hood=0, stop_hood=20, step_size=1, #start_year=2008, end_year=2022,
-                       embedder_version=1.0, max_files=1000,
-                       summarization_version=1.0, K_images=5, N_clusters=5, N_dimensions=5,
+	OneRUNtoRUNthemALL(database_version=3.0, start_hood=6, stop_hood=7, step_size=1, #start_year=2008, end_year=2022,
+                       embedder_version=4.2, max_files=1000,
+                       summarization_version=1.0, N_clusters=5, N_dimensions=5,
                        visualization_version=3.2, visualize=True,
                        file_name='')
 

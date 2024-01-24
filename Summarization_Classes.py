@@ -1,21 +1,22 @@
 import ast
-import random
-import torch
-from typing import Union, List, Dict
-from Grand_Parent import GrandParent
-import pandas as pd
-from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans, AgglomerativeClustering, OPTICS
-from scipy.spatial import distance
-from torch import norm, normal, tensor
-import torch
 import os
-from scipy.spatial import distance
-import numpy as np
-from sklearn.manifold import TSNE
 import time
-from umap import UMAP
+from typing import Union, List, Dict
+
+import numpy as np
+import pandas as pd
+from sympy import plot
+import torch
+from scipy.spatial import distance
+from sklearn.cluster import KMeans, AgglomerativeClustering, OPTICS
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+from torch import tensor
 from tqdm import tqdm
+from umap import UMAP
+import matplotlib.pyplot as plt
+
+from Grand_Parent import GrandParent
 
 
 # I don't know why, but otherwise I'm getting an error
@@ -194,8 +195,7 @@ class Clusterer:
         '''
         data: dict[int, list[float]] = kwargs['data']
         min_samples: int = kwargs['min_samples'] if 'min_samples' in kwargs else 5
-        # Assuming a suitable density clustering method is used here
-        # Modify the following line accordingly
+        
         self.density = OPTICS(min_samples=min_samples)
         self.density.fit_predict(list(data.values()))
 
@@ -209,14 +209,26 @@ class ClusterFinder:
         data = kwargs['data']
         
         max_cluster = 0
-        for i in tqdm(range(2, 30)):
+        samples = []
+        clusters = []
+        for i in tqdm(range(2, 50), desc='Finding Clusters'):
             density = self.apply_density(data=data, min_samples=i)
-            if len(density) > max_cluster and len(density) < 10:
+            samples.append(i)
+            clusters.append(len(density))
+            if len(density) == 1:
+                break
+            if len(density) > max_cluster and 2 < len(density) < 8:
                 max_cluster = len(density)
                 print(f'found {max_cluster} clusters at {i} min_samples')
-                
+        
+        # Plotting
+        # plt.scatter(samples, clusters)
+        # plt.xlabel('Samples')
+        # plt.ylabel('Clusters')
+        # plt.title('Relationship between min_samples and number of clusters')
+        # plt.show() 
+        
         return max_cluster
-
 
 class CentreFinder:
     def get_kmeans_centre(self, **kwargs) -> dict[int, str]:
@@ -418,7 +430,7 @@ class SummerizationTSNEDensity(SummarizationParent, DimensionalityReducer, Clust
 
 class SummerizationUMAPKmeans(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = '3.0WIP'
+        self.version: float | str = 3.0
         self.name: str = "UMAP_Kmeans"
 
     def run(self, **kwargs):
@@ -434,7 +446,7 @@ class SummerizationUMAPKmeans(SummarizationParent, DimensionalityReducer, Cluste
 
 class SummerizationUMAPHierarchy(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = '3.1WIP'
+        self.version: float | str = 3.1
         self.name: str = "UMAP_Hierical"
 
     def run(self, **kwargs):
@@ -450,7 +462,7 @@ class SummerizationUMAPHierarchy(SummarizationParent, DimensionalityReducer, Clu
 
 class SummerizationUMAPDensity(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     def __init__(self) -> None:
-        self.version: float | str = '3.2WIP'
+        self.version: float | str = 3.2
         self.name: str = "UMAP_Density"
 
     def run(self, **kwargs):
@@ -503,7 +515,7 @@ class SummerizationPCADensityDensity(SummarizationParent, DimensionalityReducer,
         centers = self.get_density_centre(data=pca_data)
         return self.generate_output_dict(density, centers)
 
-########################################## 4.1 ##########################################################
+########################################## 4.2 ##########################################################
 
 class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer, Clusterer, ClusterFinder, CentreFinder):
     def __init__(self) -> None:
@@ -519,7 +531,7 @@ class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer
         if N_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
             N_clusters = 5
-        hierarchical = self.apply_hierarchical(data=pca_data, min_samples=3, seed=42)
+        hierarchical = self.apply_hierarchical(data=pca_data, n_clusters=N_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=pca_data)
         return self.generate_output_dict(hierarchical, centers)
 
@@ -529,47 +541,87 @@ def time_version(**kwargs) -> float:
     Returns the time taken to run the summarization algorithm with the given version.
     '''
     
-    test_data = pd.read_csv('Embedding Files\Embeddings_1_0_0.csv')
+    test_data = pd.read_csv('Embedding Files\Embeddings_v1_0_2392_4783.csv', delimiter=';')    
+    data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
+    
+    summarization = SummarizationParent()
+    repeats = kwargs['repeats']
+    data = kwargs['data']
+    version = kwargs['summarization_version']
+    
+    times = []
+    for _ in range(repeats):
+        start_time = time.perf_counter()
+        summarization.run(
+            summarization_version=version,
+            data=data,
+            N_dimensions=10,
+            N_clusters=5
+        )
+        end_time = time.perf_counter()
+        times.append(end_time - start_time)
+    
+    standard_error = np.std(times) / np.sqrt(repeats)
+    return np.mean(times), standard_error
+
+'''
+def accuracy_version(**kwargs) -> float:
+    
+    test_data = pd.read_csv('Embedding Files\Embeddings_v1_0_2392_4783.csv', delimiter=';')
+    repeats = 5
+    
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
     
     summarization = SummarizationParent()
     data = kwargs['data']
     version = kwargs['summarization_version']
     
-    times = []
-    for _ in range(5):
-        start_time = time.perf_counter()
-        summarization.run(
-            summarization_version=version,
-            data=data,
-            N_dimensions=10,
-            N_clusters=3
-        )
-        end_time = time.perf_counter()
-        times.append(end_time - start_time)
+    accuracies = []
+    for _ in range(repeats):
+        # some way to measure accuracy
+        accuracies.append(sum([len(v['cluster'].intersection(v['selected'])) for v in output.values()]) / len(data))
     
-    return np.mean(times), np.std(times)
+    standard_error = np.std(accuracies) / np.sqrt(repeats)
+    return np.mean(accuracies), standard_error
+'''
 
-def compare_times(data) -> pd.DataFrame:
+def compare_versions() -> pd.DataFrame:
     '''	
     returns a dataframe with the time taken to run each version of the summarization algorithm
     '''	
-    dimensionality_reducers = ['PCA', 'TSNE']
-    clusterers = ['Kmeans', 'Hierical', 'Density']
-    
-    versions = {}
-    
-    # Create a dictionary of versions
-    for i, dr in enumerate(dimensionality_reducers):
-        for j, cl in enumerate(clusterers):
-            versions[float(str(i+1) + '.' + str(j))] = f'{dr} {cl}'
+    repeats = 3
+    versions = {
+        1.0 : 'PCA_Kmeans',
+        1.1 : 'PCA_Hierical',
+        1.2 : 'PCA_Density',
+        2.0 : 'TSNE_Kmeans',
+        2.1 : 'TSNE_Hierical',
+        2.2 : 'TSNE_Density',
+        3.0 : 'UMAP_Kmeans',
+        3.1 : 'UMAP_Hierical',
+        3.2 : 'UMAP_Density',
+    }
     
     times = {}
-    for version in versions:
-        stats= time_version(data=data, summarization_version=version)
-        times[versions[version]] = stats
+    for version in tqdm(versions.keys(), desc='Comparing Times'):
+        mean, standard_error = time_version(data=data, summarization_version=version, repeats=repeats)
+        time = f"{mean:.3f} ± {standard_error:.3f}"
+        times[versions[version]] = time
     
-    return pd.DataFrame.from_dict(times, orient='index', columns=['Mean Time', 'Standard Deviation'])
+    '''
+    accuracy = {}
+        for version in tqdm(versions.keys(), desc='Comparing Accuracy'):
+        mean, standard_error = accuracy_version(data=data, summarization_version=version)
+        acc = f"{mean:.3f} ± {standard_error:.3f}"
+        accuracy[versions[version]] = acc
+    '''
+    
+    times_df = pd.DataFrame.from_dict(times, orient='index', columns=['Mean Time (s)'])
+    # accuracy df = pd.DataFrame.from_dict(accuracy, orient='index', columns=['Mean Accuracy (%)'])
+    # merged_df = pd.merge(times_df, accuracy_df, left_index=True, right_index=True)
+    # return merged_df
+    
+    return times_df
 
 def pretty_print(output):
     for key in sorted(output.keys(), key=lambda x:int(x.split(' ')[1])):
@@ -580,11 +632,11 @@ if __name__ == "__main__":
     test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv', delimiter=',')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
 
-    # print(compare_times(data))
+    # print(compare_versions)
         
     summarization = SummarizationParent()
     output = summarization.run(
-        summarization_version= 4.1,
+        summarization_version= 4.0,
         data=data,
         N_dimensions=10,
         N_clusters=4,
