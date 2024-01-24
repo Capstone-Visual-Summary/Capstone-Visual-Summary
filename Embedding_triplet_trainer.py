@@ -47,9 +47,9 @@ class FineTuneResNet152(nn.Module):
 # Load the pre-trained ResNet152 model
 original_model = models.resnet152(pretrained=True)
 
-# Assume the output feature size of ResNet152 is 2048
 model = FineTuneResNet152(feature_size=2048, output_size=2048).to(device)
-
+#model.load_state_dict(torch.load('resnet152_trained_triplet_epoch2.pt'))
+     
 # If you wish to fine-tune the entire network, set requires_grad to True
 for param in model.parameters():
     param.requires_grad = True
@@ -219,7 +219,10 @@ for epoch in range(num_epochs):
     print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {average_loss:.4f}, Val Loss: {val_average_loss:.4f}, Time: {epoch_time:.2f}s')
 
     # Save the model per epoch
-    torch.save(model.state_dict(), f'resnet152_trained_triplet_epoch{epoch+1}.pt')
+    torch.save(model.state_dict(), f'resnet152_trained_triplet_epoch{epoch+1}_num_triplets{num_triplets}.pt')
+    if model is not None:
+        print('Model saved successfully')
+
 
 # Save the loss and time per epoch to a CSV file
 with open('loss_and_time_per_epoch.csv', 'w', newline='') as csvfile:
