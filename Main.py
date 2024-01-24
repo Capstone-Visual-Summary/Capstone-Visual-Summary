@@ -6,7 +6,7 @@ from Visualization_Classes import VisualizationParent
 from geopandas import GeoDataFrame
 from tqdm import tqdm
 
-def OneRUNtoRUNthemALL(**kwargs):
+def OneRUNtoRUNthemALL(**kwargs) -> None:
 	"""
 	Runs a series of operations on the given input parameters.
 
@@ -55,12 +55,12 @@ def OneRUNtoRUNthemALL(**kwargs):
 
 	embedding_neighbourhood = dict()
 
-	for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images)):
+	for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(wanted_hoods)):
 		
 		if int(neighbourhood_id) not in wanted_hoods:
 			continue
 
-		print('Embedding neighbourhood:', neighbourhood_id)
+		# print('Embedding neighbourhood:', neighbourhood_id)
 		embeddings = dict()
 
 		image_ids = neighbourhood_images[neighbourhood_id]
@@ -74,25 +74,28 @@ def OneRUNtoRUNthemALL(**kwargs):
 		embedding_neighbourhood[neighbourhood_id] = embeddings
 
 	
-	print(embedding_neighbourhood)
+	# print(embedding_neighbourhood)
 
 	summaries = dict()
 
 	for neighbourhood_id in tqdm(embedding_neighbourhood):
-		print('summarizing neighbourhood:', neighbourhood_id)
+		# print('summarizing neighbourhood:', neighbourhood_id)
 		# summaries is of type: tuple[dict[str, list[str]], dict[str, str]], so tuple[clusters, centroids]
 		summaries[str(neighbourhood_id)] = summarization_parent.run(data=embedding_neighbourhood[str(neighbourhood_id)], **kwargs)
 	
-	for neighbourhood_id in embedding_neighbourhood:
-		print('viusalising neighbourhood:', neighbourhood_id)
-		visualization_parent.run(summary=dummaries[neighbourhood_id], embeddings=embedding_neighbourhood, neighbourhood_id=neighbourhood_id, images=images, **kwargs)
+	if 'visualization_version' not in kwargs or kwargs['visualization_version'] >= 3.0:
+		visualization_parent.run(summaries=summaries, embeddings=embedding_neighbourhood, images=images, neighbourhoods=neighbourhoods, **kwargs)
+	else:
+		for neighbourhood_id in embedding_neighbourhood:
+			print('viusalising neighbourhood:', neighbourhood_id)
+			visualization_parent.run(summary=summaries[neighbourhood_id], embeddings=embedding_neighbourhood, neighbourhood_id=neighbourhood_id, images=images, **kwargs)
 	print('DONE')
  
 if __name__ == '__main__':
-	OneRUNtoRUNthemALL(database_version=1.0, start_hood=7, stop_hood=9, step_size=1, #start_year=2008, end_year=2022,
+	OneRUNtoRUNthemALL(database_version=3.0, start_hood=0, stop_hood=20, step_size=1, #start_year=2008, end_year=2022,
                        embedder_version=1.0, max_files=1000,
                        summarization_version=1.0, K_images=5, N_clusters=5, N_dimensions=5,
-                       visualization_version=1.1, visualize=True,
+                       visualization_version=3.2, visualize=True,
                        file_name='')
 
 
