@@ -15,6 +15,7 @@ from torch import tensor
 from tqdm import tqdm
 from umap import UMAP
 import matplotlib.pyplot as plt
+from scipy.cluster.hierarchy import dendrogram, linkage
 
 from Grand_Parent import GrandParent
 
@@ -70,6 +71,39 @@ class Plotter:
         plt.ylabel('number of clusters K')
         for i in range(len(x)):
             plt.text(x[i], y[i], f'  k={y[i]}')
+        plt.show()
+    
+    def create_dendrogram_plot(self, **kwargs) -> None:
+        '''
+        Creates a dendrogram plot of all the images using hierarchical clustering.
+
+        Parameters:
+            data (dict[int, list[float]]): A dictionary where keys are IDs, and values are lists of transformed data after PCA.
+            n_clusters (int): The number of clusters to form in the hierarchical clustering.
+        '''
+        data: dict[int, list[float]] = kwargs['data']
+        n_clusters: int = kwargs['n_clusters']
+
+        # Generate linkage matrix for dendrogram
+        linkage_matrix = linkage(list(data.values()), method='ward')
+
+        # Set color_threshold based on the number of clusters
+        color_threshold = linkage_matrix[-(n_clusters - 1), 2]  # Adjust for 0-based indexing
+
+        # Create dendrogram
+        dendrogram(linkage_matrix, color_threshold=color_threshold)
+
+        # Add a horizontal line to mark the cut based on the number of clusters
+        cutting_line_1 = linkage_matrix[-n_clusters + 1, 2]  # Adjust for 0-based indexing
+        cutting_line_2 = linkage_matrix[-n_clusters, 2]  # Adjust for 0-based indexing
+        middle_cutting_line = (cutting_line_1 + cutting_line_2) / 2
+
+        plt.axhline(y=middle_cutting_line, color='r', linestyle='--', label=f'Cutting Line for {n_clusters} Clusters')
+
+        plt.title('Hierarchical Clustering Dendrogram')
+        plt.xlabel('Image IDs')
+        plt.ylabel('Distance')
+        plt.legend()
         plt.show()
 
 class DimensionalityReducer:
@@ -521,7 +555,7 @@ class SummerizationPCADensityDensity(SummarizationParent, DimensionalityReducer,
 
 ########################################## 3.2 ##########################################################
 
-class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer, Clusterer, ClusterFinder, CentreFinder):
+class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer, Clusterer, ClusterFinder, CentreFinder, Plotter):
     def __init__(self) -> None:
         self.version: float | str = 3.2
         self.name: str = "PCA_Density_Hirarchy"
@@ -530,11 +564,12 @@ class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer
         data = kwargs['data']
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
         
-        pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions, plot=True)
-        N_clusters = self.find_clusters(data=pca_data)
+        pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
+        N_clusters = self.find_clusters(data=pca_data, plot=True)
         if N_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
             N_clusters = 5
+        self.create_dendrogram_plot(data=pca_data, n_clusters=N_clusters)
         hierarchical = self.apply_hierarchical(data=pca_data, n_clusters=N_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=pca_data)
         return self.generate_output_dict(hierarchical, centers)
@@ -640,7 +675,7 @@ if __name__ == "__main__":
         
     summarization = SummarizationParent()
     output = summarization.run(
-        summarization_version= 3.0,
+        summarization_version= 3.2,
         data=data,
         N_dimensions=10,
         N_clusters=4,
