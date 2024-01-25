@@ -15,6 +15,7 @@ from torch import tensor
 from tqdm import tqdm
 from umap import UMAP
 import matplotlib.pyplot as plt
+from scipy.cluster.hierarchy import dendrogram, linkage
 
 from Grand_Parent import GrandParent
 
@@ -62,6 +63,48 @@ class SummarizationParent(GrandParent):
     def run(self, **kwargs):
         version = kwargs['summarization_version'] if 'summarization_version' in kwargs else -1        
         return super().run(version, **kwargs)
+
+class Plotter:
+    def plot_clusters(self, x, y):
+        plt.scatter(x, y)
+        plt.xlabel('min_samples')
+        plt.ylabel('number of clusters K')
+        for i in range(len(x)):
+            plt.text(x[i], y[i], f'  k={y[i]}')
+        plt.show()
+    
+    def create_dendrogram_plot(self, **kwargs) -> None:
+        '''
+        Creates a dendrogram plot of all the images using hierarchical clustering.
+
+        Parameters:
+            data (dict[int, list[float]]): A dictionary where keys are IDs, and values are lists of transformed data after PCA.
+            n_clusters (int): The number of clusters to form in the hierarchical clustering.
+        '''
+        data: dict[int, list[float]] = kwargs['data']
+        n_clusters: int = kwargs['n_clusters']
+
+        # Generate linkage matrix for dendrogram
+        linkage_matrix = linkage(list(data.values()), method='ward')
+
+        # Set color_threshold based on the number of clusters
+        color_threshold = linkage_matrix[-(n_clusters - 1), 2]  # Adjust for 0-based indexing
+
+        # Create dendrogram
+        dendrogram(linkage_matrix, color_threshold=color_threshold)
+
+        # Add a horizontal line to mark the cut based on the number of clusters
+        cutting_line_1 = linkage_matrix[-n_clusters + 1, 2]  # Adjust for 0-based indexing
+        cutting_line_2 = linkage_matrix[-n_clusters, 2]  # Adjust for 0-based indexing
+        middle_cutting_line = (cutting_line_1 + cutting_line_2) / 2
+
+        plt.axhline(y=middle_cutting_line, color='r', linestyle='--', label=f'Cutting Line for {n_clusters} Clusters')
+
+        plt.title('Hierarchical Clustering Dendrogram')
+        plt.xlabel('Image IDs')
+        plt.ylabel('Distance')
+        plt.legend()
+        plt.show()
 
 class DimensionalityReducer:
     def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
@@ -202,9 +245,10 @@ class Clusterer:
 
         return label_id_dict
 
-class ClusterFinder:
+class ClusterFinder(Plotter):
     def find_clusters(self, **kwargs) -> int:
         data = kwargs['data']
+        plot = kwargs['plot'] if 'plot' in kwargs else False
         
         max_cluster = 0
         samples = []
@@ -219,12 +263,8 @@ class ClusterFinder:
                 max_cluster = len(density)
                 print(f'found {max_cluster} clusters at {i} min_samples')
         
-        # Plotting
-        # plt.scatter(samples, clusters)
-        # plt.xlabel('Samples')
-        # plt.ylabel('Clusters')
-        # plt.title('Relationship between min_samples and number of clusters')
-        # plt.show() 
+        if plot:
+            self.plot_clusters(samples, clusters)
         
         return max_cluster
 
@@ -309,7 +349,7 @@ class CentreFinder:
             cluster_centers[f'Centroid Cluster {cluster_id}'] = center_image_id
 
         return cluster_centers
-
+    
 ########################################## 1.0 ##########################################################
 
 class SummerizationPCAKmeans(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
@@ -485,7 +525,7 @@ class SummerizationPCADensityKmeans(SummarizationParent, DimensionalityReducer, 
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
         
         pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
-        N_clusters = self.find_clusters(data=pca_data)
+        N_clusters = self.find_clusters(data=pca_data, plot=True)
         if N_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
             N_clusters = 5
@@ -505,7 +545,7 @@ class SummerizationPCADensityDensity(SummarizationParent, DimensionalityReducer,
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
         
         pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
-        N_clusters = self.find_clusters(data=pca_data)
+        N_clusters = self.find_clusters(data=pca_data, plot=True)
         if N_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
             N_clusters = 5
@@ -515,7 +555,7 @@ class SummerizationPCADensityDensity(SummarizationParent, DimensionalityReducer,
 
 ########################################## 3.2 ##########################################################
 
-class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer, Clusterer, ClusterFinder, CentreFinder):
+class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer, Clusterer, ClusterFinder, CentreFinder, Plotter):
     def __init__(self) -> None:
         self.version: float | str = 3.2
         self.name: str = "PCA_Density_Hirarchy"
@@ -525,10 +565,11 @@ class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
         
         pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
-        N_clusters = self.find_clusters(data=pca_data)
+        N_clusters = self.find_clusters(data=pca_data, plot=True)
         if N_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
             N_clusters = 5
+        self.create_dendrogram_plot(data=pca_data, n_clusters=N_clusters)
         hierarchical = self.apply_hierarchical(data=pca_data, n_clusters=N_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=pca_data)
         return self.generate_output_dict(hierarchical, centers)
@@ -544,7 +585,6 @@ def time_version(**kwargs) -> float:
     
     summarization = SummarizationParent()
     repeats = kwargs['repeats']
-    data = kwargs['data']
     version = kwargs['summarization_version']
     
     times = []
@@ -562,42 +602,52 @@ def time_version(**kwargs) -> float:
     standard_error = np.std(times) / np.sqrt(repeats)
     return np.mean(times), standard_error
 
-'''
+def tensor_average_percentage_difference(group1: list[torch.Tensor], group2: list[torch.Tensor]):
+        # Check if groups are not empty
+        if not group1 or not group2:
+            raise ValueError("Input tensor groups should not be empty")
+
+        # Calculate the average tensor for each group
+        avg_tensor1 = sum(group1) / len(group1)
+        avg_tensor2 = sum(group2) / len(group2)
+        
+        # Calculate the norm of the difference and of group 1
+        diffference = torch.norm(avg_tensor1 - avg_tensor2).item()
+
+        return diffference
+
 def accuracy_version(**kwargs) -> float:
     
     test_data = pd.read_csv('Embedding Files\Embeddings_v1_0_2392_4783.csv', delimiter=';')
     repeats = 5
     
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
-    
+    print(type(data))
     summarization = SummarizationParent()
-    data = kwargs['data']
     version = kwargs['summarization_version']
     
     accuracies = []
     for _ in range(repeats):
-        # some way to measure accuracy
-        accuracies.append(sum([len(v['cluster'].intersection(v['selected'])) for v in output.values()]) / len(data))
+        output = summarization.run(
+            summarization_version=version,
+            data=data,
+            N_dimensions=10,
+            N_clusters=5
+        )
+        percentage = tensor_average_percentage_difference()
+        accuracies.append(sum([len(v['cluster'].intersection(v['selected'])) for v in percentage.values()]) / len(data))
     
     standard_error = np.std(accuracies) / np.sqrt(repeats)
     return np.mean(accuracies), standard_error
-'''
 
 def compare_versions() -> pd.DataFrame:
     '''	
     returns a dataframe with the time taken to run each version of the summarization algorithm
     '''	
-    repeats = 5
+    repeats = 3
     versions = {
         1.0 : 'PCA  Kmeans',
         2.0 : 'PCA  Hierical',
-        2.1 : 'PCA  Density',
-        2.2 : 'TSNE Kmeans',
-        2.3 : 'TSNE Hierical',
-        2.4 : 'TSNE Density',
-        2.5 : 'UMAP Kmeans',
-        2.6 : 'UMAP Hierical',
-        2.7 : 'UMAP Density',
     }
     
     times = {}
@@ -606,13 +656,13 @@ def compare_versions() -> pd.DataFrame:
         time = f"{mean:.3f} ± {standard_error:.3f}"
         times[versions[version]] = time
     
-    '''
+
     accuracy = {}
-        for version in tqdm(versions.keys(), desc='Comparing Accuracy'):
+    for version in tqdm(versions.keys(), desc='Comparing Accuracy'):
         mean, standard_error = accuracy_version(data=data, summarization_version=version)
         acc = f"{mean:.3f} ± {standard_error:.3f}"
         accuracy[versions[version]] = acc
-    '''
+
     
     times_df = pd.DataFrame.from_dict(times, orient='index', columns=['Mean Time (s)'])
     # accuracy df = pd.DataFrame.from_dict(accuracy, orient='index', columns=['Mean Accuracy (%)'])
@@ -629,12 +679,13 @@ if __name__ == "__main__":
     
     test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv', delimiter=',')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
+    print(data)
 
-    print(compare_versions())
+    # print(compare_versions())
         
     # summarization = SummarizationParent()
     # output = summarization.run(
-    #     summarization_version= 3.0,
+    #     summarization_version= 3.2,
     #     data=data,
     #     N_dimensions=10,
     #     N_clusters=4,
@@ -644,7 +695,7 @@ if __name__ == "__main__":
     # # print(output)
     # pretty_print(output)
     
-    # print('DONE')
+    print('DONE')
     
 #Example Output
 #{
