@@ -91,9 +91,9 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
 	print('DONE')
  
 if __name__ == '__main__':
-	OneRUNtoRUNthemALL(database_version=3.0, start_hood=7, stop_hood=9, step_size=1, #start_year=2008, end_year=2022,
+	OneRUNtoRUNthemALL(database_version=3.0, start_hood=7, stop_hood=15, step_size=1, #start_year=2008, end_year=2022,
                        embedder_version=1.0, max_files=1000,
-                       summarization_version=1.0, N_clusters=5, N_dimensions=5,
+                       summarization_version=3.0, N_clusters=5, N_dimensions=5,
                        visualization_version=3.2, visualize=True,
                        file_name='')
 
