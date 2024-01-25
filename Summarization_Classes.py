@@ -585,7 +585,6 @@ def time_version(**kwargs) -> float:
     
     summarization = SummarizationParent()
     repeats = kwargs['repeats']
-    data = kwargs['data']
     version = kwargs['summarization_version']
     
     times = []
@@ -603,42 +602,52 @@ def time_version(**kwargs) -> float:
     standard_error = np.std(times) / np.sqrt(repeats)
     return np.mean(times), standard_error
 
-'''
+def tensor_average_percentage_difference(group1: list[torch.Tensor], group2: list[torch.Tensor]):
+        # Check if groups are not empty
+        if not group1 or not group2:
+            raise ValueError("Input tensor groups should not be empty")
+
+        # Calculate the average tensor for each group
+        avg_tensor1 = sum(group1) / len(group1)
+        avg_tensor2 = sum(group2) / len(group2)
+        
+        # Calculate the norm of the difference and of group 1
+        diffference = torch.norm(avg_tensor1 - avg_tensor2).item()
+
+        return diffference
+
 def accuracy_version(**kwargs) -> float:
     
     test_data = pd.read_csv('Embedding Files\Embeddings_v1_0_2392_4783.csv', delimiter=';')
     repeats = 5
     
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
-    
+    print(type(data))
     summarization = SummarizationParent()
-    data = kwargs['data']
     version = kwargs['summarization_version']
     
     accuracies = []
     for _ in range(repeats):
-        # some way to measure accuracy
-        accuracies.append(sum([len(v['cluster'].intersection(v['selected'])) for v in output.values()]) / len(data))
+        output = summarization.run(
+            summarization_version=version,
+            data=data,
+            N_dimensions=10,
+            N_clusters=5
+        )
+        percentage = tensor_average_percentage_difference()
+        accuracies.append(sum([len(v['cluster'].intersection(v['selected'])) for v in percentage.values()]) / len(data))
     
     standard_error = np.std(accuracies) / np.sqrt(repeats)
     return np.mean(accuracies), standard_error
-'''
 
 def compare_versions() -> pd.DataFrame:
     '''	
     returns a dataframe with the time taken to run each version of the summarization algorithm
     '''	
-    repeats = 5
+    repeats = 3
     versions = {
         1.0 : 'PCA  Kmeans',
         2.0 : 'PCA  Hierical',
-        2.1 : 'PCA  Density',
-        2.2 : 'TSNE Kmeans',
-        2.3 : 'TSNE Hierical',
-        2.4 : 'TSNE Density',
-        2.5 : 'UMAP Kmeans',
-        2.6 : 'UMAP Hierical',
-        2.7 : 'UMAP Density',
     }
     
     times = {}
@@ -647,13 +656,13 @@ def compare_versions() -> pd.DataFrame:
         time = f"{mean:.3f} ± {standard_error:.3f}"
         times[versions[version]] = time
     
-    '''
+
     accuracy = {}
-        for version in tqdm(versions.keys(), desc='Comparing Accuracy'):
+    for version in tqdm(versions.keys(), desc='Comparing Accuracy'):
         mean, standard_error = accuracy_version(data=data, summarization_version=version)
         acc = f"{mean:.3f} ± {standard_error:.3f}"
         accuracy[versions[version]] = acc
-    '''
+
     
     times_df = pd.DataFrame.from_dict(times, orient='index', columns=['Mean Time (s)'])
     # accuracy df = pd.DataFrame.from_dict(accuracy, orient='index', columns=['Mean Accuracy (%)'])
@@ -670,20 +679,21 @@ if __name__ == "__main__":
     
     test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv', delimiter=',')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
+    print(data)
 
     # print(compare_versions())
         
-    summarization = SummarizationParent()
-    output = summarization.run(
-        summarization_version= 3.2,
-        data=data,
-        N_dimensions=10,
-        N_clusters=4,
-        min_samples=6
-    )
+    # summarization = SummarizationParent()
+    # output = summarization.run(
+    #     summarization_version= 3.2,
+    #     data=data,
+    #     N_dimensions=10,
+    #     N_clusters=4,
+    #     min_samples=6
+    # )
     
-    # print(output)
-    pretty_print(output)
+    # # print(output)
+    # pretty_print(output)
     
     print('DONE')
     
