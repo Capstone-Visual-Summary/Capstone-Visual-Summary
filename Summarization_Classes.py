@@ -63,6 +63,15 @@ class SummarizationParent(GrandParent):
         version = kwargs['summarization_version'] if 'summarization_version' in kwargs else -1        
         return super().run(version, **kwargs)
 
+class Plotter:
+    def plot_clusters(self, x, y):
+        plt.scatter(x, y)
+        plt.xlabel('min_samples')
+        plt.ylabel('number of clusters K')
+        for i in range(len(x)):
+            plt.text(x[i], y[i], f'  k={y[i]}')
+        plt.show()
+
 class DimensionalityReducer:
     def apply_pca(self, **kwargs ) -> dict[int, list[float]]:
         '''
@@ -202,9 +211,10 @@ class Clusterer:
 
         return label_id_dict
 
-class ClusterFinder:
+class ClusterFinder(Plotter):
     def find_clusters(self, **kwargs) -> int:
         data = kwargs['data']
+        plot = kwargs['plot'] if 'plot' in kwargs else False
         
         max_cluster = 0
         samples = []
@@ -219,12 +229,8 @@ class ClusterFinder:
                 max_cluster = len(density)
                 print(f'found {max_cluster} clusters at {i} min_samples')
         
-        # Plotting
-        # plt.scatter(samples, clusters)
-        # plt.xlabel('Samples')
-        # plt.ylabel('Clusters')
-        # plt.title('Relationship between min_samples and number of clusters')
-        # plt.show() 
+        if plot:
+            self.plot_clusters(samples, clusters)
         
         return max_cluster
 
@@ -309,7 +315,7 @@ class CentreFinder:
             cluster_centers[f'Centroid Cluster {cluster_id}'] = center_image_id
 
         return cluster_centers
-
+    
 ########################################## 1.0 ##########################################################
 
 class SummerizationPCAKmeans(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
@@ -485,7 +491,7 @@ class SummerizationPCADensityKmeans(SummarizationParent, DimensionalityReducer, 
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
         
         pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
-        N_clusters = self.find_clusters(data=pca_data)
+        N_clusters = self.find_clusters(data=pca_data, plot=True)
         if N_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
             N_clusters = 5
@@ -505,7 +511,7 @@ class SummerizationPCADensityDensity(SummarizationParent, DimensionalityReducer,
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
         
         pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
-        N_clusters = self.find_clusters(data=pca_data)
+        N_clusters = self.find_clusters(data=pca_data, plot=True)
         if N_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
             N_clusters = 5
@@ -524,7 +530,7 @@ class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer
         data = kwargs['data']
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
         
-        pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
+        pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions, plot=True)
         N_clusters = self.find_clusters(data=pca_data)
         if N_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
@@ -630,21 +636,21 @@ if __name__ == "__main__":
     test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv', delimiter=',')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
 
-    print(compare_versions())
+    # print(compare_versions())
         
-    # summarization = SummarizationParent()
-    # output = summarization.run(
-    #     summarization_version= 3.0,
-    #     data=data,
-    #     N_dimensions=10,
-    #     N_clusters=4,
-    #     min_samples=6
-    # )
+    summarization = SummarizationParent()
+    output = summarization.run(
+        summarization_version= 3.0,
+        data=data,
+        N_dimensions=10,
+        N_clusters=4,
+        min_samples=6
+    )
     
-    # # print(output)
-    # pretty_print(output)
+    # print(output)
+    pretty_print(output)
     
-    # print('DONE')
+    print('DONE')
     
 #Example Output
 #{
