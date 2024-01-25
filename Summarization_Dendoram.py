@@ -89,28 +89,16 @@ class DimensionalityReducer:
         return result_dict
     
 class Clusterer:
-    def apply_hierarchical(self, **kwargs) -> Dict[str, List[int]]:
+    def create_dendrogram_plot(self, **kwargs) -> None:
         '''
-        Creates a dendrogram of all the images using hierarchical clustering.
+        Creates a dendrogram plot of all the images using hierarchical clustering.
 
         Parameters:
             data (dict[int, list[float]]): A dictionary where keys are IDs, and values are lists of transformed data after PCA.
             n_clusters (int): The number of clusters to form in the hierarchical clustering.
-
-        Returns:
-            A dictionary mapping image IDs to cluster labels, and a plot displaying the hierarchical clustering dendrogram.
         '''
         data: dict[int, list[float]] = kwargs['data']
         n_clusters: int = kwargs['n_clusters']
-
-        if self.hierarchical is None:
-            # Fit the hierarchical clustering model
-            self.hierarchical = AgglomerativeClustering(n_clusters=n_clusters)
-            self.hierarchical.fit(list(data.values()))
-
-        # Access _create_label_id_dict method from SummarizationParent
-        id_label_dict = dict(zip(data.keys(), self.hierarchical.labels_))
-        label_id_dict = self._create_label_id_dict(id_label_dict)
 
         # Generate linkage matrix for dendrogram
         linkage_matrix = linkage(list(data.values()), method='ward')
@@ -133,8 +121,6 @@ class Clusterer:
         plt.ylabel('Distance')
         plt.legend()
         plt.show()
-
-        return label_id_dict
     
 class SummerizationPCAHirarchyDendogram(SummarizationParent, DimensionalityReducer, Clusterer):
     '''
@@ -163,7 +149,8 @@ class SummerizationPCAHirarchyDendogram(SummarizationParent, DimensionalityReduc
         print(pca_data)
 
         # Apply hierarchical clustering with dendrogram creation
-        hierarchical_labels = self.apply_hierarchical(data=pca_data, n_clusters=7)
+        # hierarchical_labels = self.apply_hierarchical(data=pca_data, n_clusters=7)
+        self.create_dendrogram_plot(data=pca_data, n_clusters=7)
 
 if __name__ == "__main__":
     
