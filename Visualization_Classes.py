@@ -76,7 +76,7 @@ class VisualizationParent(GrandParent):
         summaries = kwargs['summaries']
         neighbourhoods = kwargs['neighbourhoods']
 
-        color_getter = VisualizationCOLOR()
+        color_getter = VisualizationVerification()
 
         visualization_data = dict()
 
@@ -160,7 +160,9 @@ class VisualizationPLT2(VisualizationParent):
     def run(self, **kwargs):
         summary = kwargs['summary']
         images = kwargs['images']
-        embeddings = kwargs['embeddings']
+        neighbourhood_id = kwargs['neighbourhood_id']
+        embedder_version = kwargs['embedder_version']
+        summarization_version = kwargs['summarization_version']
 
         n_clusters = len(summary)
 
@@ -175,6 +177,7 @@ class VisualizationPLT2(VisualizationParent):
             col_height = math.ceil(max_cluster/col_width)
         
         fig = plt.figure(figsize=(col_width + col_height, n_clusters * col_width), facecolor='#404040')
+        fig.set_title('Neighbourhood ',neighbourhood_id)
 
         # Define the main layout
         outer_grid = gridspec.GridSpec(2, n_clusters, wspace=0.1, hspace=0.1)
@@ -211,12 +214,19 @@ class VisualizationPLT2(VisualizationParent):
 
         # Adjust layout
         plt.subplots_adjust(wspace=0.01, hspace=0.01)
-        plt.show()
+        
+        fig_width_in_inches = fig.get_size_inches()[0]  # Get the width of the figure in inches
+        desired_pixel_width = 400  # Maximum pixel width
+        dpi = desired_pixel_width / fig_width_in_inches  # Calculate the DPI
+
+        save_path_complete = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}_E{embedder_version}_S{summarization_version}_complete.png"
+        fig.savefig(save_path_complete, dpi=dpi)
 
         #create a second plot only containing the summary
         fig = plt.figure(figsize=(n_clusters * 5, 5), facecolor='#404040')
+        fig.set_title('Neighbourhood ',neighbourhood_id)
 
-         # Define the main layout
+        # Define the main layout
         outer_grid = gridspec.GridSpec(1, n_clusters, wspace=0.1, hspace=0.1)
 
         # Iterate over the main columns
@@ -232,7 +242,81 @@ class VisualizationPLT2(VisualizationParent):
 
         # Adjust layout
         plt.subplots_adjust(wspace=0.01, hspace=0.01)
-        plt.show()
+        
+        fig_width_in_inches = fig.get_size_inches()[0]  # Get the width of the figure in inches
+        desired_pixel_width = 400  # Maximum pixel width
+        dpi = desired_pixel_width / fig_width_in_inches  # Calculate the DPI
+
+        save_path_summary = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}_E{embedder_version}_S{summarization_version}_summary.png"
+        fig.savefig(save_path_summary, dpi=dpi)
+
+        return save_path_complete, save_path_summary
+
+    
+class VisualizationVerification(VisualizationParent):
+    def __init__(self) -> None:
+        self.version: float | str = '2.0'
+        self.name: str = "Verification"
+
+    def run(self, **kwargs):
+        summary = kwargs['summary']
+        data: temp[int, tensor] = kwargs['embeddings']
+        neighbourhood_id = kwargs['neighbourhood_id']
+
+        summary_embeddings = []
+        
+        for cluster in summary:
+            id = (summary[cluster]['selected'])
+            if id in data[str(neighbourhood_id)]:
+                summary_embeddings.append(data[str(neighbourhood_id)][id])
+            else:
+                raise ValueError('id not in neighbourhood embeddings')
+        
+        neighbourhood_embeddings = [data[str(neighbourhood_id)][key] for key in data[str(neighbourhood_id)]]
+
+        difference = self.tensor_average_percentage_difference(neighbourhood_embeddings, summary_embeddings)
+
+        #add some functionality to only train pca once and store it as an attribute
+        pca = self.train_pca_on_data(data)
+        result = self.transform_tuples_with_pca(pca, neighbourhood_embeddings)
+        color = np.mean(result, axis=0)
+
+        return(color, difference)
+        
+    def tensor_average_percentage_difference(self, group1: list[torch.Tensor], group2: list[torch.Tensor]):
+        # Check if groups are not empty
+        if not group1 or not group2:
+            raise ValueError("Input tensor groups should not be empty")
+
+        # Calculate the average tensor for each group
+        avg_tensor1 = sum(group1) / len(group1)
+        avg_tensor2 = sum(group2) / len(group2)
+        
+        # Calculate the norm of the difference and of group 1
+        diffference = torch.norm(avg_tensor1 - avg_tensor2).item()
+
+        return diffference
+    
+    def train_pca_on_data(self, dict_of_dicts):
+        # Flatten the tuples into a list
+        data = [tup for subdict in dict_of_dicts.values() for tup in subdict.values()]
+
+        # Train PCA model
+        pca = PCA(n_components=3)
+        pca.fit(data)
+        return pca
+    
+    def transform_tuples_with_pca(self, pca, tuple_list):
+        # Transform the list of tuples using the trained PCA
+        transformed_data = pca.transform(tuple_list)
+        return transformed_data
+    
+    def average_of_transformed(self, dict_of_dicts, pca):
+        averages = {}
+        for key, subdict in dict_of_dicts.items():
+            transformed_data = self.transform_tuples_with_pca(pca, list(subdict.values()))
+            averages[key] = np.mean(transformed_data, axis=0)
+        return averages
 
 
 class VisualizationCOLOR(VisualizationParent):
