@@ -17,6 +17,8 @@ from umap import UMAP
 
 from Grand_Parent import GrandParent
 
+# Below are the building blocks that make up the different versions of the summarization algorithm
+
 
 class SummarizationParent(GrandParent):
     def __init__(self) -> None:
@@ -48,9 +50,6 @@ class SummarizationParent(GrandParent):
         return label_id_dict
 
     def generate_output_dict(self, clusters, centers):
-        '''	
-
-        '''
         output = {}
         for k, v in clusters.items():
             # Extract the cluster number from the key
@@ -131,7 +130,7 @@ class DimensionalityReducer:
         # Check if the number of dimensions is not larger than the number of data points
         key = list(data.keys())[0]
         max_dimensions = min(len(data[key]), len(data))
-        N: int = kwargs['N_dimensions'] if kwargs['N_dimensions'] < max_dimensions else max_dimensions
+        N: int = kwargs['n_dimensions'] if kwargs['n_dimensions'] < max_dimensions else max_dimensions
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
         pca = PCA(n_components=N)
@@ -144,16 +143,31 @@ class DimensionalityReducer:
         return result_dict
 
     def apply_TSNE(self, **kwargs) -> dict[int, list[float]]:
+        '''	
+        Applies t-distributed Stochastic Neighbor Embedding (t-SNE) on the input data.
+
+        Parameters:
+            data (dict[int, tensor]): A dictionary where keys are IDs, and values are tensors.
+            N (int): The number of dimensions to reduce to.
+            perplexity (int): The perplexity value for t-SNE.
+            seed (int): The random seed for reproducibility.
+
+        Returns:
+            dict[int, list[float]]: A dictionary where keys are IDs, and values are lists
+
+        '''
         data: dict[int, tensor] = kwargs['data']
-        N: int = min(kwargs['N_dimensions'], 3)
+        n_dimensions: int = min(kwargs['n_dimensions'], 3)
         perplexity: int = kwargs['perplexity'] if 'perplexity' in kwargs else 30
+        seed: int = kwargs['seed'] if 'seed' in kwargs else 42
         # Extract numerical values from tensors
         numerical_data = torch.stack(list(data.values())).numpy()
         # Adjust perprexity if there are to few samples
         perplexity = perplexity if len(
             numerical_data) > perplexity else len(numerical_data) - 1
 
-        tsne = TSNE(n_components=N, random_state=42, perplexity=perplexity)
+        tsne = TSNE(n_components=n_dimensions,
+                    random_state=seed, perplexity=perplexity)
         transformed_data = tsne.fit_transform(numerical_data)
 
         # Create a dictionary with IDs as keys and transformed data as values for overview
@@ -163,8 +177,19 @@ class DimensionalityReducer:
         return result_dict
 
     def apply_UMAP(self, **kwargs) -> Dict[str, List[float]]:
+        '''	
+        Applies Uniform Manifold Approximation and Projection (UMAP) on the input data.
+
+        Parameters:
+            data (dict[int, tensor]): A dictionary where keys are IDs, and values are tensors.
+            N (int): The number of dimensions to reduce to.
+            seed (int): The random seed for reproducibility.
+
+        Returns:
+            Dict[str, List[float]]: A dictionary where keys are IDs, and values are lists
+        '''
         data: dict[int, tensor] = kwargs['data']
-        N: int = kwargs['N_dimensions']
+        N: int = kwargs['n_dimensions']
         seed: int = kwargs['seed'] if 'seed' in kwargs else 42
         # Adjust n_neighbors and n_components if there are to few samples
         n_neighbors = 15 if len(data) > 15 else len(data) - 1
@@ -199,7 +224,7 @@ class Clusterer:
             and values are lists of corresponding IDs assigned to each cluster.
         '''
         data: dict[int, list[float]] = kwargs['data']
-        n_clusters: int = kwargs['N_clusters']
+        n_clusters: int = kwargs['n_clusters']
         seed: int = kwargs['seed'] if 'seed' in kwargs else 42
         kmeans = KMeans(n_clusters=n_clusters, n_init=10, random_state=seed)
         kmeans.fit(list(data.values()))
@@ -262,6 +287,17 @@ class Clusterer:
 
 class ClusterFinder(Plotter):
     def find_clusters(self, **kwargs) -> int:
+        '''	
+        Detects a reasonable number of clusters in the data using Density Clustering.
+
+        Parameters:
+            data (dict[int, list[float]]): A dictionary where keys are IDs, and values are lists
+            of transformed data after PCA.
+            plot (bool): Whether to plot the number of clusters found for each min_samples value.
+
+        Returns:
+            int: The number of clusters found.
+        '''
         data = kwargs['data']
         plot = kwargs['plot'] if 'plot' in kwargs else False
 
@@ -286,6 +322,19 @@ class ClusterFinder(Plotter):
 
 class CentreFinder:
     def get_kmeans_centre(self, **kwargs) -> dict[int, str]:
+        '''	
+        Finds the closest data point to each cluster center in the KMeans clustering results.
+
+        Parameters:
+            **kwargs: Additional keyword arguments.
+                - data (dict[int, list[float]]): A dictionary where keys are image IDs, and values are lists
+                representing the transformed data
+
+        Returns:
+            dict[int, str]: A dictionary where keys are cluster names (e.g., "Centroid Cluster 1"),
+            and values are image IDs representing the closest data point to each cluster center.
+
+        '''
         data: dict[int, list[float]] = kwargs['data']
         center_images = {}
         for i in range(len(self.kmeans.cluster_centers_)):
@@ -368,21 +417,31 @@ class CentreFinder:
 
         return cluster_centers
 
-########################################## 1.0 ##########################################################
+# Below are the different versions of the summarization algorithm
 
 
 class SummerizationPCAKmeans(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
+    '''	
+    This class performs Principal Component Analysis (PCA) on input data and applies
+        clustering KMeans.
+
+    Attributes:
+        version (float | str): The version of the Summerization class.
+        name (str): The name of the clustering technique followed by PCA (e.g., "PCA_Kmeans").
+
+    '''
+
     def __init__(self) -> None:
         self.version: float | str = 1.0
         self.name: str = "PCA_Kmeans"
 
     def run(self, **kwargs):
         data = kwargs['data']
-        N_pca_d = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
-        n_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
-        pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
+        n_pca_d = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 2
+        n_clusters = kwargs['n_clusters'] if 'n_clusters' in kwargs else 3
+        pca_data = self.apply_pca(data=data, n_dimensions=n_pca_d)
         kmeans = self.apply_kmeans(
-            data=pca_data, N_clusters=n_clusters, seed=42)
+            data=pca_data, n_clusters=n_clusters, seed=42)
         centers = self.get_kmeans_centre(data=pca_data)
         return self.generate_output_dict(kmeans, centers)
 
@@ -392,11 +451,11 @@ class SummerizationPCAKmeans(SummarizationParent, DimensionalityReducer, Cluster
 class SummerizationPCAHierarchy(SummarizationParent, DimensionalityReducer, Clusterer, CentreFinder):
     '''
     This class performs Principal Component Analysis (PCA) on input data and applies
-     clustering Hierarchical Clustering.
+        clustering Hierarchical Clustering.
 
     Attributes:
         version (float | str): The version of the Summerization class.
-        name (str): The name of the clustering technique followed by PCA (e.g., "PCA_Kmeans_Hierical").
+        name (str): The name of the clustering technique followed by PCA (e.g., "PCA_Hierical").
     '''
 
     def __init__(self) -> None:
@@ -405,11 +464,11 @@ class SummerizationPCAHierarchy(SummarizationParent, DimensionalityReducer, Clus
 
     def run(self, **kwargs):
         data = kwargs['data']
-        N_pca_d = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
-        N_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
-        pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
+        n_pca_d = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 2
+        n_clusters = kwargs['n_clusters'] if 'n_clusters' in kwargs else 3
+        pca_data = self.apply_pca(data=data, n_dimensions=n_pca_d)
         hierarchical = self.apply_hierarchical(
-            data=pca_data, n_clusters=N_clusters, seed=42)
+            data=pca_data, n_clusters=n_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=pca_data)
         return self.generate_output_dict(hierarchical, centers)
 
@@ -432,10 +491,10 @@ class SummerizationPCADensity(SummarizationParent, DimensionalityReducer, Cluste
 
     def run(self, **kwargs):
         data = kwargs['data']
-        N_pca_d = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        n_pca_d = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 2
         min_samples: int = kwargs['min_samples'] if 'min_samples' in kwargs else 5
 
-        pca_data = self.apply_pca(data=data, N_dimensions=N_pca_d)
+        pca_data = self.apply_pca(data=data, n_dimensions=n_pca_d)
         density = self.apply_density(data=pca_data, min_samples=min_samples)
         centers = self.get_density_centre(data=pca_data)
         return self.generate_output_dict(density, centers)
@@ -450,11 +509,11 @@ class SummerizationTSNEKmeans(SummarizationParent, DimensionalityReducer, Cluste
 
     def run(self, **kwargs):
         data = kwargs['data']
-        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
-        N_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
-        TSNE_data = self.apply_TSNE(data=data, N_dimensions=N_dimensions)
+        n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 2
+        n_clusters = kwargs['n_clusters'] if 'n_clusters' in kwargs else 3
+        TSNE_data = self.apply_TSNE(data=data, n_dimensions=n_dimensions)
         kmeans = self.apply_kmeans(
-            data=TSNE_data, N_clusters=N_clusters, seed=42)
+            data=TSNE_data, n_clusters=n_clusters, seed=42)
         centers = self.get_kmeans_centre(data=TSNE_data)
         return self.generate_output_dict(kmeans, centers)
 
@@ -468,11 +527,11 @@ class SummerizationTSNEHierarchy(SummarizationParent, DimensionalityReducer, Clu
 
     def run(self, **kwargs):
         data = kwargs['data']
-        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
-        N_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
-        TSNE_data = self.apply_TSNE(data=data, N_dimensions=N_dimensions)
+        n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 2
+        n_clusters = kwargs['n_clusters'] if 'n_clusters' in kwargs else 3
+        TSNE_data = self.apply_TSNE(data=data, n_dimensions=n_dimensions)
         hierarchical = self.apply_hierarchical(
-            data=TSNE_data, n_clusters=N_clusters, seed=42)
+            data=TSNE_data, n_clusters=n_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=TSNE_data)
         return self.generate_output_dict(hierarchical, centers)
 
@@ -486,10 +545,10 @@ class SummerizationTSNEDensity(SummarizationParent, DimensionalityReducer, Clust
 
     def run(self, **kwargs):
         data = kwargs['data']
-        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 2
         min_samples: int = kwargs['min_samples'] if 'min_samples' in kwargs else 5
 
-        TSNE_data = self.apply_TSNE(data=data, N_dimensions=N_dimensions)
+        TSNE_data = self.apply_TSNE(data=data, n_dimensions=n_dimensions)
         density = self.apply_density(data=TSNE_data, min_samples=min_samples)
         centers = self.get_density_centre(data=TSNE_data)
         return self.generate_output_dict(density, centers)
@@ -504,12 +563,12 @@ class SummerizationUMAPKmeans(SummarizationParent, DimensionalityReducer, Cluste
 
     def run(self, **kwargs):
         data = kwargs['data']
-        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
-        N_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
+        n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 2
+        n_clusters = kwargs['n_clusters'] if 'n_clusters' in kwargs else 3
         UMAP_data = self.apply_UMAP(
-            data=data, N_dimensions=N_dimensions, seed=42)
+            data=data, n_dimensions=n_dimensions, seed=42)
         kmeans = self.apply_kmeans(
-            data=UMAP_data, N_clusters=N_clusters, seed=42)
+            data=UMAP_data, n_clusters=n_clusters, seed=42)
         centers = self.get_kmeans_centre(data=UMAP_data)
         return self.generate_output_dict(kmeans, centers)
 
@@ -523,12 +582,12 @@ class SummerizationUMAPHierarchy(SummarizationParent, DimensionalityReducer, Clu
 
     def run(self, **kwargs):
         data = kwargs['data']
-        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
-        N_clusters = kwargs['N_clusters'] if 'N_clusters' in kwargs else 3
+        n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 2
+        n_clusters = kwargs['n_clusters'] if 'n_clusters' in kwargs else 3
         UMAP_data = self.apply_UMAP(
-            data=data, N_dimensions=N_dimensions, seed=42)
+            data=data, n_dimensions=n_dimensions, seed=42)
         hierarchical = self.apply_hierarchical(
-            data=UMAP_data, n_clusters=N_clusters, seed=42)
+            data=UMAP_data, n_clusters=n_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=UMAP_data)
         return self.generate_output_dict(hierarchical, centers)
 
@@ -542,11 +601,11 @@ class SummerizationUMAPDensity(SummarizationParent, DimensionalityReducer, Clust
 
     def run(self, **kwargs):
         data = kwargs['data']
-        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 2
         min_samples: int = kwargs['min_samples'] if 'min_samples' in kwargs else 5
 
         UMAP_data = self.apply_UMAP(
-            data=data, N_dimensions=N_dimensions, seed=42)
+            data=data, n_dimensions=n_dimensions, seed=42)
         density = self.apply_density(data=UMAP_data, min_samples=min_samples)
         centers = self.get_density_centre(data=UMAP_data)
         return self.generate_output_dict(density, centers)
@@ -561,15 +620,15 @@ class SummerizationPCADensityKmeans(SummarizationParent, DimensionalityReducer, 
 
     def run(self, **kwargs):
         data = kwargs['data']
-        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 2
 
-        pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
-        N_clusters = self.find_clusters(data=pca_data, plot=False)
-        if N_clusters == 0:
+        pca_data = self.apply_pca(data=data, n_dimensions=n_dimensions)
+        n_clusters = self.find_clusters(data=pca_data, plot=False)
+        if n_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
-            N_clusters = 5
+            n_clusters = 5
         kmeans = self.apply_kmeans(
-            data=pca_data, N_clusters=N_clusters, seed=42)
+            data=pca_data, n_clusters=n_clusters, seed=42)
         centers = self.get_kmeans_centre(data=pca_data)
         return self.generate_output_dict(kmeans, centers)
 
@@ -583,13 +642,13 @@ class SummerizationPCADensityDensity(SummarizationParent, DimensionalityReducer,
 
     def run(self, **kwargs):
         data = kwargs['data']
-        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 2
 
-        pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
-        N_clusters = self.find_clusters(data=pca_data, plot=False)
-        if N_clusters == 0:
+        pca_data = self.apply_pca(data=data, n_dimensions=n_dimensions)
+        n_clusters = self.find_clusters(data=pca_data, plot=False)
+        if n_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
-            N_clusters = 5
+            n_clusters = 5
         density = self.apply_density(data=pca_data, min_samples=3, seed=42)
         centers = self.get_density_centre(data=pca_data)
         return self.generate_output_dict(density, centers)
@@ -604,20 +663,20 @@ class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer
 
     def run(self, **kwargs):
         data = kwargs['data']
-        N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
+        n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 2
 
-        pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
-        N_clusters = self.find_clusters(data=pca_data, plot=False)
-        if N_clusters == 0:
+        pca_data = self.apply_pca(data=data, n_dimensions=n_dimensions)
+        n_clusters = self.find_clusters(data=pca_data, plot=False)
+        if n_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
-            N_clusters = 5
-        self.create_dendrogram_plot(data=pca_data, n_clusters=N_clusters)
+            n_clusters = 5
+        self.create_dendrogram_plot(data=pca_data, n_clusters=n_clusters)
         hierarchical = self.apply_hierarchical(
-            data=pca_data, n_clusters=N_clusters, seed=42)
+            data=pca_data, n_clusters=n_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=pca_data)
         return self.generate_output_dict(hierarchical, centers)
 
-#########################################################################################################
+# Below functions are used to compare the different versions of the summarization algorithm
 
 
 def time_version(**kwargs) -> float:
@@ -640,8 +699,8 @@ def time_version(**kwargs) -> float:
         summarization.run(
             summarization_version=version,
             data=data,
-            N_dimensions=10,
-            N_clusters=5
+            n_dimensions=10,
+            n_clusters=5
         )
         end_time = time.perf_counter()
         times.append(end_time - start_time)
@@ -688,8 +747,8 @@ def distance_version(**kwargs) -> float:
         output = summarization.run(
             summarization_version=version,
             data=data,
-            N_dimensions=10,
-            N_clusters=5
+            n_dimensions=10,
+            n_clusters=5
         )
         percentage = get_distance(data=data, summary=output)
         distances.append(percentage)
@@ -740,7 +799,8 @@ def compare_versions() -> pd.DataFrame:
         distance, orient='index', columns=['Mean Distance (-)'])
     merged_df = pd.merge(times_df, distance_df,
                          left_index=True, right_index=True)
-    return merged_df
+
+    print(merged_df)
 
 
 def compare_dimensions(**kwargs) -> None:
@@ -755,8 +815,8 @@ def compare_dimensions(**kwargs) -> None:
         output = summarization.run(
             summarization_version=version,
             data=data,
-            N_dimensions=dimension,
-            N_clusters=4,
+            n_dimensions=dimension,
+            n_clusters=4,
             min_samples=6
         )
 
@@ -779,27 +839,28 @@ def pretty_print(output):
 
 if __name__ == "__main__":
 
+    print('START')
+
+    # loading in the embeddings to test on
     test_data = pd.read_csv(
         'Embedding Files\Embeddings_v1_0_14352_16743.csv', delimiter=';')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index(
         'image_id')['tensor'].to_dict().items()}
 
-    # comparison = compare_versions()
-    # comparison.to_csv('comparison.csv')
-    # print(comparison)
+    # uncomment to run the comparisons
+    # compare_versions()
+    # compare_dimensions(version=1.0, data=data)
 
-    compare_dimensions(version=1.0, data=data)
+    summarization = SummarizationParent()
+    output = summarization.run(
+        summarization_version=3.2,
+        data=data,
+        n_dimensions=10,
+        n_clusters=4,
+        min_samples=6
+    )
 
-    # summarization = SummarizationParent()
-    # output = summarization.run(
-    #     summarization_version= 3.2,
-    #     data=data,
-    #     N_dimensions=10,
-    #     N_clusters=4,
-    #     min_samples=6
-    # )
-
-    # # print(output)
+    # uncomment to print the output
     # pretty_print(output)
 
     print('DONE')
