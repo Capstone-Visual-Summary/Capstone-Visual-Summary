@@ -19,13 +19,13 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
                     - start_hood (int): The starting neighborhood ID. Defaults to 0.
                     - stop_hood (int): The stopping neighborhood ID. Defaults to the total number of neighborhoods.
                     - step_size (int): The step size for iterating over the neighborhoods. Defaults to 1.
-                    - start_year (int): From what year onwards the images should be from. Defualts to 2008.
-                    - end_year (int): Until (inclusive) what year the images should be from. Defualts to 2022.
+                    - start_year (int): From what year onwards the images should be from. Defaults to 2008.
+                    - end_year (int): Until (inclusive) what year the images should be from. Defaults to 2022.
                     - embedder_version (float): The version of the embedder to use. Defaults to the newest version.
                     - max_files (int): Limits the number of embedding files loaded to memory. Defaults to 1000.
                     - summarization_version (float): The version of the summarization algorithm to use. Defaults to the newest version.
                     - N_clusters (int): The number of clusters to create in the summarization algorithm. Defaults to 3.
-                    - N_dimensions (int): The number of dimensions to use in the embedding algorithm. Defaults to 5.
+                    - N_dimensions (int): The number of dimensions to use in the embedding algorithm. Defaults to 25.
                     - visualization_version (float): The version of the visualization algorithm to use. Defaults to the newest version.
                     - visualize (bool): Whether to visualize the results. Defaults to True.
                     - file_name (str): The name of the file to save the results. Defaults to an empty string.
@@ -60,7 +60,7 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
 
     embedding_neighbourhood = dict()
 
-    for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images)):
+    for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images), desc='Getting embeddings'):
 
         if int(neighbourhood_id) not in wanted_hoods:
             continue
@@ -84,7 +84,7 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
 
     summaries = dict()
 
-    for neighbourhood_id in tqdm(embedding_neighbourhood):
+    for neighbourhood_id in tqdm(embedding_neighbourhood, desc='Generating summaries'):
         # print('summarizing neighbourhood:', neighbourhood_id)
         # summaries is of type: tuple[dict[str, list[str]], dict[str, str]], so tuple[clusters, centroids]
         summaries[str(neighbourhood_id)] = summarization_parent.run(
@@ -102,8 +102,8 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
 
 
 if __name__ == '__main__':
-    OneRUNtoRUNthemALL(database_version=3.0, start_hood=7, stop_hood=15, step_size=1,  # start_year=2008, end_year=2022,
+    OneRUNtoRUNthemALL(database_version=3.0, start_hood=14, stop_hood=15, step_size=1,  # start_year=2008, end_year=2022,
                        embedder_version=1.0, max_files=1000,
-                       summarization_version=3.0, n_clusters=5, n_dimensions=15,
-                       visualization_version=3.2, visualize=True,
+                       summarization_version=3.0, n_clusters=5, n_dimensions=25,
+                       visualization_version=3.0, visualize=True,
                        file_name='')
