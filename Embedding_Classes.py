@@ -47,7 +47,7 @@ class EmbeddingParent(GrandParent):
         return files[int(img_id_com) // 2392]
 
 
-class EmbeddingResNet(EmbeddingParent):
+class EmbeddingResNet_1_0(EmbeddingParent):
     class EmbeddingResNet:
         def __init__(self) -> None:
             """
