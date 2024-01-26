@@ -24,6 +24,20 @@ class EmbeddingParent(GrandParent):
         return super().run(version, **kwargs)
 
     def get_file_path(self, version, img_id_com) -> str:
+        """
+        Returns the file path corresponding to the given version and image ID combination.
+
+        Parameters:
+        version (str): The version of the file.
+        img_id_com (int): The combined image ID.
+
+        Returns:
+        str: The file path.
+
+        Example:
+        >>> get_file_path('1.0', 100)
+        'Embedding Files/v1_0_100_0.npy'
+        """
         version_split = str(version).split('.')
         version_str = f'v{version_split[0]}_{version_split[1]}'
 
@@ -34,75 +48,126 @@ class EmbeddingParent(GrandParent):
 
 
 class EmbeddingResNet(EmbeddingParent):
-    def __init__(self) -> None:
-        self.version: float | str = 1.0
-        self.name: str = "EmbeddingResNet 1.0"
-        self.files_in_memory = []
-        self.image_embeddings = dict()
+    class EmbeddingResNet:
+        def __init__(self) -> None:
+            """
+            Initializes an instance of the EmbeddingResNet class.
 
-    def Image2Vec_embedder_ResNet50(self, image) -> torch.Tensor:
-        use_cuda = torch.cuda.is_available()
-        print(use_cuda)
-        img2vec = Img2Vec(cuda=use_cuda, model='resnet50', layer='default', layer_output_size=2048, gpu=0)
-        # layer = 'layer_name' For advanced users, which layer of the model to extract the output from.   default: 'avgpool'
-        img = Image.open(image).convert('RGB')
-        vec = torch.tensor(img2vec.get_vec(img))
-        return vec
+            Attributes:
+            - version (float | str): The version number of the embedding class.
+            - name (str): The name of the embedding class.
+            - files_in_memory (list): A list to store files in memory.
+            - image_embeddings (dict): A dictionary to store image embeddings.
+            """
+            self.version: float | str = 1.0
+            self.name: str = "EmbeddingResNet 1.0"
+            self.files_in_memory = []
+            self.image_embeddings = dict()
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
+        """
+        Embeds an image using the ResNet152 model.
+
+        Args:
+            image (str): The path to the image file.
+
+        Returns:
+            torch.Tensor: The embedded representation of the image.
+        """
         use_cuda = torch.cuda.is_available()
         img2vec = Img2Vec(cuda=use_cuda, model='resnet152', layer='default', layer_output_size=2048, gpu=0)
-        # layer = 'layer_name' For advanced users, which layer of the model to extract the output from.   default: 'avgpool'
         img = Image.open(image).convert('RGB')
         vec = torch.tensor(img2vec.get_vec(img))
         return vec
     
     def run(self, **kwargs):
-        if 'file_name' in kwargs and kwargs['file_name'] != '':
-            file_name = f"Embedding Files/" + kwargs['file_name']
-        else:
-            file_name = self.get_file_path(self.version, kwargs['image_id'])
+            """
+            Runs the embedding process for a given image ID.
 
-        if file_name in self.files_in_memory:
-            return self.image_embeddings[str(kwargs['image_id'])]
+            Args:
+                **kwargs: Additional keyword arguments.
+                    - file_name (str): The name of the file containing the image embeddings.
+                    - image_id (int): The ID of the image to retrieve the embedding for.
+                    - max_files (int): The maximum number of files to keep in memory.
 
-        max_files = int(kwargs['max_files']) if 'max_files' in kwargs and int(kwargs['max_files']) >= 1 else 100
+            Returns:
+                torch.Tensor: The embedding tensor for the specified image ID.
 
-        if len(self.files_in_memory) == max_files:
-            lower_bound = int(self.files_in_memory[0].split('_')[3].split('_')[0])
-            upper_bound = int(self.files_in_memory[0].split('_')[4].split('.')[0]) + 1
+            Raises:
+                FileNotFoundError: If the specified file cannot be found.
+                ValueError: If the embedding for the specified image ID is not found in the file.
+            """
+            if 'file_name' in kwargs and kwargs['file_name'] != '':
+                file_name = f"Embedding Files/" + kwargs['file_name']
+            else:
+                file_name = self.get_file_path(self.version, kwargs['image_id'])
 
-            for i in range(lower_bound, upper_bound):
-                del self.image_embeddings[int(i)]
+            if file_name in self.files_in_memory:
+                return self.image_embeddings[str(kwargs['image_id'])]
 
-            del self.files_in_memory[0]
+            max_files = int(kwargs['max_files']) if 'max_files' in kwargs and int(kwargs['max_files']) >= 1 else 100
 
-            self.files_in_memory.append(file_name)
-        else:
-            self.files_in_memory.append(file_name)
+            if len(self.files_in_memory) == max_files:
+                lower_bound = int(self.files_in_memory[0].split('_')[3].split('_')[0])
+                upper_bound = int(self.files_in_memory[0].split('_')[4].split('.')[0]) + 1
 
-        try:
-            with open(file_name, mode='r', newline='', encoding='utf-8') as csvfile:
-                temp = csv.DictReader(csvfile, delimiter=';')
+                for i in range(lower_bound, upper_bound):
+                    del self.image_embeddings[int(i)]
 
-                for row in temp:
-                    self.image_embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
-        except FileNotFoundError:
-            raise FileNotFoundError(f'Could not find file: {file_name}, please check if you have it downloaded')
+                del self.files_in_memory[0]
 
-        if str(kwargs['image_id']) in self.image_embeddings:
-            return self.image_embeddings[str(kwargs['image_id'])]
+                self.files_in_memory.append(file_name)
+            else:
+                self.files_in_memory.append(file_name)
 
-        if str(kwargs['image_id']) not in self.image_embeddings:
-            raise ValueError(f"Embedding of {kwargs['image_id']} not found. Please check {file_name} to see if it is included")
+            try:
+                with open(file_name, mode='r', newline='', encoding='utf-8') as csvfile:
+                    temp = csv.DictReader(csvfile, delimiter=';')
+
+                    for row in temp:
+                        self.image_embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
+            except FileNotFoundError:
+                raise FileNotFoundError(f'Could not find file: {file_name}, please check if you have it downloaded')
+
+            if str(kwargs['image_id']) in self.image_embeddings:
+                return self.image_embeddings[str(kwargs['image_id'])]
+
+            if str(kwargs['image_id']) not in self.image_embeddings:
+                raise ValueError(f"Embedding of {kwargs['image_id']} not found. Please check {file_name} to see if it is included")
      
 
 class EmbeddingResNet_2_0(EmbeddingParent):
+    """
+    Class representing the EmbeddingResNet 2.0 model.
+
+    Attributes:
+        version (float | str): The version of the model.
+        name (str): The name of the model.
+
+    Methods:
+        Image2Vec_embedder_ResNet152(image) -> torch.Tensor:
+            Converts an image to a vector embedding using the ResNet152 model.
+
+        run(**kwargs) -> torch.Tensor:
+            Runs the model to generate image embeddings.
+
+    """
     def __init__(self) -> None:
         self.version: float | str = '2.0 WIP'
         self.name: str = "EmbeddingResNet 2.0" 
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
+        """
+        Converts an image to a vector embedding using the ResNet152 model, without last 2 layers
+        without the average pooling layer and without the fully connected layer.
+
+        Args:
+            image: The path to the image file.
+
+        Returns:
+            torch.Tensor: The vector embedding of the image.
+
+        """
         resnet152 = models.resnet152(weights=ResNet152_Weights.IMAGENET1K_V1)
         resnet152.eval()
 
@@ -122,6 +187,16 @@ class EmbeddingResNet_2_0(EmbeddingParent):
         return vec
         
     def run(self, **kwargs):
+        """
+        Runs the model to generate image embeddings.
+
+        Args:
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            torch.Tensor: The image embedding.
+
+        """
         if 'file_name' in kwargs and kwargs['file_name'] != '':
             file_name = f"Embedding Files/" + kwargs['file_name']
         else:
@@ -164,11 +239,36 @@ class EmbeddingResNet_2_0(EmbeddingParent):
         return image_embedding
 
 class EmbeddingResNet_2_1(EmbeddingParent):
+    """
+    EmbeddingResNet_2_1 class represents a specific version of the embedding model
+    that uses ResNet152 architecture with triplet loss.
+
+    This class provides functionality to convert an image into a vector representation
+    using the ResNet152 model. It also supports saving and loading image embeddings
+    to/from a CSV file.
+
+    Attributes:
+        version (float | str): The version of the embedding model.
+        name (str): The name of the embedding model.
+
+    Methods:
+        Image2Vec_embedder_ResNet152: Converts an image into a vector representation using ResNet152.
+        run: Runs the embedding process and returns the image embedding vector.
+    """
     def __init__(self) -> None:
         self.version: float | str = '2.1 WIP'
         self.name: str = "EmbeddingResNet 2.1 with triplet loss" 
     
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
+        """
+        Converts an image into a vector representation using the ResNet152 model.
+        Implement own model with triplet loss. At resnet152 variable
+        Args:
+            image: The path to the image file.
+
+        Returns:
+            torch.Tensor: The vector representation of the image.
+        """
         resnet152 = models.resnet152(weights=ResNet152_Weights.IMAGENET1K_V1)
         resnet152.eval()
 
@@ -180,14 +280,23 @@ class EmbeddingResNet_2_1(EmbeddingParent):
         ])
 
         modules = list(resnet152.children())[:-2] #-2 without avgpool and fc
-        resnet152 = nn.Sequential(*modules)
-
+        resnet152 = nn.Sequential(*modules) 
+        
         img = Image.open(image).convert('RGB')
         img = transform(img)
         vec = torch.tensor(resnet152(img.unsqueeze(0))) 
         return vec
         
     def run(self, **kwargs):
+        """
+        Runs the embedding process and returns the image embedding vector.
+
+        Args:
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            torch.Tensor: The image embedding vector.
+        """
         if 'file_name' in kwargs and kwargs['file_name'] != '':
             file_name = f"Embedding Files/" + kwargs['file_name']
         else:

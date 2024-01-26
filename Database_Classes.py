@@ -21,6 +21,15 @@ class DatabaseParent(GrandParent):
         return super().run(version, **kwargs) # type: ignore
     
     def neighbourhood_pairs(self, images_file, neighbourhoods_info_file, neighbourhood_pairs_file, **kwargs) -> tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]:
+        """
+        - Reads all the image information into geodataframe images
+        - Read all the neighbourhood information into a geodataframe
+        - If a year range is specified, it will filter the image geodataframe to only include images within that range
+        - If a file exists with the right version number, then it will read the neighbourhood pairs from a json file otherwise,
+        it will generate a new json file where it is a dictionary with as key the neighbourhood id and the values are which images are included
+        Returns: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame], being in order: assigned_neighbourhoods, images, neighbourhoods
+        
+        """
         images = gpd.read_file(images_file)
         neighbourhoods = gpd.read_file(neighbourhoods_info_file)
 
@@ -74,15 +83,6 @@ class DatabaseParent(GrandParent):
                 json.dump(assigned_neighbourhoods_list, json_file)
 
         return assigned_neighbourhoods_list, images, neighbourhoods
-
-
-# class DatabaseADDMETHODNAME(DatabaseParent):
-#     def __init__(self) -> None:
-#         self.version: float | str = 1.0
-#         self.name: str = "ADD METHOD NAME"
-
-#     def run(self, **kwargs):
-#         pass
 
 
 class DatabaseGeopandasPolygons(DatabaseParent):
