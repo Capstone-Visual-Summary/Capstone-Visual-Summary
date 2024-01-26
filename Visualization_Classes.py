@@ -59,7 +59,7 @@ class VisualizationParent(GrandParent):
         
         return normalized_data
     
-    def process_visualization_data(self, **kwargs) -> tuple[dict[str, torch.Tensor], dict[str, list[int]], dict[str, str]]:
+    def process_visualization_data(self, **kwargs) -> tuple[dict[str, torch.Tensor], dict[str, list[int]], dict[str, str], list[int]]:
         summaries = kwargs['summaries']
         neighbourhoods = kwargs['neighbourhoods']
 
@@ -68,8 +68,12 @@ class VisualizationParent(GrandParent):
 
         visualization_data: dict[str, torch.Tensor] = dict()
         summary_images: dict[str, str] = dict()
+        summary_images_ids: list[int] = []
 
         for neighbourhood_id in tqdm(summaries, total=len(summaries)):
+            for cluster_num, cluster in summaries[neighbourhood_id].items():
+                summary_images_ids.append(int(cluster['selected']))
+
             temp_storage_color = color_getter.run(summary=summaries[neighbourhood_id], neighbourhood_id=neighbourhood_id, **kwargs)
             temp_storage_image = summary_image_getter.run(summary=summaries[neighbourhood_id], neighbourhood_id=neighbourhood_id, **kwargs)
 
@@ -89,17 +93,20 @@ class VisualizationParent(GrandParent):
         
         colors = {key: value.tolist() for key, value in map_neighbourhoods_vis_data.items()}
 
-        return map_neighbourhoods_vis_data, colors, summary_images
+        return map_neighbourhoods_vis_data, colors, summary_images, summary_images_ids
     
-    def generate_map(self, config, neighbourhoods, map_neighbourhoods_vis_data) -> None:
+    def generate_map(self, config, neighbourhoods, map_neighbourhoods_vis_data, summary_images_ids, images) -> None:
+        images = images.loc[images['img_id_com'].isin(summary_images_ids)]
+
         visual_map = KeplerGl(height=400, config=config)
+        visual_map.add_data(images, name='Summary Images')
 
         for neighbourhood_id in map_neighbourhoods_vis_data:
             if 'BU_NAAM' in neighbourhoods:
                 visual_map.add_data(neighbourhoods.loc[neighbourhoods['BU_NAAM'] == neighbourhood_id], name=neighbourhood_id)
             else:
                 visual_map.add_data(neighbourhoods.loc[neighbourhoods['neighbourhood_id'] == int(neighbourhood_id)], name=neighbourhood_id)
-        
+
         visual_map.save_to_html(file_name='Output.html')
 
         webbrowser.open('file://' + os.path.abspath('Output.html'), new=2)
@@ -210,12 +217,12 @@ class VisualizationPLT2(VisualizationParent):
         desired_pixel_width = 400  # Maximum pixel width
         dpi = desired_pixel_width / fig_width_in_inches  # Calculate the DPI
 
-        save_path_complete = f"Visual_Summaries/neighbourhood_{neighbourhood_id}_E{embedder_version}_S{summarization_version}_complete.png"
+        save_path_complete = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}E{str(embedder_version).split('.')[0]}{str(embedder_version).split('.')[1]}S{str(summarization_version).split('.')[0]}{str(summarization_version).split('.')[1]}__complete.png"
         fig.savefig(save_path_complete, dpi=dpi)
 
         #create a second plot only containing the summary
         fig = plt.figure(figsize=(n_clusters * 5, 5), facecolor='#404040')
-        fig.set_title('Neighbourhood ',neighbourhood_id)
+        fig.suptitle(f'Neighbourhood {neighbourhood_id}')
 
         # Define the main layout
         outer_grid = gridspec.GridSpec(1, n_clusters, wspace=0.1, hspace=0.1)
@@ -238,7 +245,7 @@ class VisualizationPLT2(VisualizationParent):
         desired_pixel_width = 400  # Maximum pixel width
         dpi = desired_pixel_width / fig_width_in_inches  # Calculate the DPI
 
-        save_path_summary = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}_E{embedder_version}_S{summarization_version}_summary.png"
+        save_path_summary = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}E{str(embedder_version).split('.')[0]}{str(embedder_version).split('.')[1]}S{str(summarization_version).split('.')[0]}{str(summarization_version).split('.')[1]}_summary.png"
         fig.savefig(save_path_summary, dpi=dpi)
 
         return save_path_complete, save_path_summary
@@ -383,24 +390,27 @@ class VisualizationCOLOR(VisualizationParent):
         return averages
 
 
-class VisualizationInteractiveMapBorder(VisualizationParent):
+class VisualizationInteractiveMap(VisualizationParent):
     def __init__(self) -> None:
-        self.version: float | str = '3.0WIP'
-        self.name: str = 'Interactive Map Accurarcy Border'
+        self.version: float | str = 3.0
+        self.name: str = 'Interactive Map'
 
-    def run(self, **kwargs):
-        # TODO ADD PICTURE SUMMARY PER NEIGHBOURHOOD
+    def run(self, **kwargs) -> None: # type: ignore
+        """
+        Based on the summaries, creates an interactive map of the neighbourhoods, with colour similarity,
+        and upon hovering, show the image summary of the neighbourhood and where the sumary images are located in the neighbourhood
+        Saves and opens an html file
+        """
+
         neighbourhoods = kwargs['neighbourhoods']
-        neighbourhoods['<img>-summary'] = None
         
-        map_neighbourhoods_vis_data, colors, summary_images = self.process_visualization_data(**kwargs)
+        map_neighbourhoods_vis_data, colors, summary_images, summary_images_ids = self.process_visualization_data(**kwargs)
 
         for neighbourhood_id, summary_image in summary_images.items():
-            neighbourhoods.loc[(neighbourhoods['neighbourhood_id'] == neighbourhood_id), '<img>-summary'] = summary_image
-
+            neighbourhoods.loc[neighbourhoods['neighbourhood_id'] == int(neighbourhood_id), '<img>-summary'] = summary_image
+        
         config = generate_config(colors)
-
-        self.generate_map(config, neighbourhoods, map_neighbourhoods_vis_data)
+        self.generate_map(config, neighbourhoods, map_neighbourhoods_vis_data, summary_images_ids, kwargs['images'])
 
 
 if __name__ == '__main__':
@@ -424,7 +434,7 @@ if __name__ == '__main__':
 
     images = gpd.read_file('Hardcoded Images 2 Neighbourhoods.geojson')
     neighbourhoods = gpd.read_file('Geo-JSON Files/neighbourhood_info_v1_0.geojson')
-    neighbourhoods['<img>-summary'] = 'Figure_1.png'
+    # neighbourhoods['<img>-summary'] = 'Visual_Summaries/neighbourhood_7E10S20_summary.png'
 
     embedding_neighbourhood = dict()
 
@@ -439,87 +449,5 @@ if __name__ == '__main__':
         
         embedding_neighbourhood[neighbourhood_id] = image_embeddings
 
-    Test = VisualizationInteractiveMapBorder()
+    Test = VisualizationInteractiveMap()
     Test.run(summaries=summary, embeddings=embedding_neighbourhood, images=images, neighbourhoods=neighbourhoods, embedder_version=1.0, summarization_version=2.0)
-    
-
-# def train_pca_on_data(dict_of_dicts):
-#     # Flatten the tuples into a list
-#     data = [tup for subdict in dict_of_dicts.values() for tup in subdict.values()]
-
-#     # Train PCA model
-#     pca = PCA(n_components=3)
-#     pca.fit(data)
-#     return pca
-
-# def transform_tuples_with_pca(pca, tuple_list):
-#     # Transform the list of tuples using the trained PCA
-#     transformed_data = pca.transform(tuple_list)
-#     return transformed_data
-
-# def average_of_transformed(dict_of_dicts, pca):
-#     averages = {}
-#     for key, subdict in dict_of_dicts.items():
-#         transformed_data = transform_tuples_with_pca(pca, list(subdict.values()))
-#         averages[key] = np.mean(transformed_data, axis=0)
-#     return averages
-
-# Example usage
-# dict_of_dicts = {'category1': {'item1': (1,2,3), 'item2': (4,5,6)}, 'category2': {'item3': (7,8,9)}}
-# pca_model = train_pca_on_dict(dict_of_dicts)
-# transformed_averages = average_of_transformed(dict_of_dicts, pca_model)
-
-
-# ----------------
-    
-
-        # # Check if the number of dimensions is not larger than the number of data points
-    # key = list(data.keys())[0]
-    # max_dimensions = min(len(data[key]), len(data))
-    # N: int = kwargs['N_dimensions'] if kwargs['N_dimensions'] < max_dimensions else max_dimensions
-    # # Extract numerical values from tensors
-    # numerical_data = torch.stack(list(data.values())).numpy()
-    # pca = PCA(n_components=N)
-    # pca.fit(numerical_data)
-    # transformed_data = pca.transform(numerical_data)
-    # # Create a dictionary with IDs as keys and transformed data as values for overview
-    # result_dict = {id_: transformed_data[i].tolist() for i, id_ in enumerate(data.keys())}
-    #return result_dict
-
-    # Create a figure
-    # fig = plt.figure(figsize=(10, 10), facecolor='black')
-
-    # # Define the main layout
-    # outer_grid = gridspec.GridSpec(2, n_clusters, wspace=0.1, hspace=0.1)
-
-    # # Iterate over the main columns
-    # for i, cluster in enumerate(summary):
-    #     # Top subplot for the single image with a title and bottom title
-    #     path = images.loc[(images['img_id_com'] == int(summary[cluster]['selected'])), 'path'].iloc[0]
-    #     img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + path)
-    #     ax_top = fig.add_subplot(outer_grid[0, i])
-    #     ax_top.imshow(img)
-    #     ax_top.set_title(path, color='white')
-    #     ax_top.axis('off')
-
-    #     # Bottom subplot for the grid of images
-    #     ax_bottom = fig.add_subplot(outer_grid[1, i])
-    #     ax_bottom.axis('off')
-
-    #     # Create a nested grid within the bottom subplot
-    #     nested_grid = gridspec.GridSpecFromSubplotSpec(grid_rows, grid_cols, subplot_spec=outer_grid[1, i], wspace=0.05, hspace=0.05)
-
-    #     # Populate the nested grid with images
-    #     for j in range(grid_rows * grid_cols):
-    #         ax_nested = plt.Subplot(fig, nested_grid[j])
-    #         if j < len(summary[cluster]['cluster']):
-    #                 path = images.loc[(images['img_id_com'] == int(summary[cluster]['cluster'][j])), 'path'].iloc[0]
-    #                 # print(path)
-    #                 img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + path)
-    #                 ax_nested.imshow(img)
-    #         ax_nested.axis('off')
-    #         fig.add_subplot(ax_nested)
-
-    # # Adjust layout
-    # plt.subplots_adjust(wspace=0.1, hspace=0.1)
-    # plt.show()
