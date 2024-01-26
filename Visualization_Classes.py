@@ -276,8 +276,20 @@ class VisualizationVerification(VisualizationParent):
         self.name: str = "Verification"
 
     def run(self, **kwargs):
+        """
+        Generates and returns color and difference between all embeddings and the summary embeddings.
+
+        Parameters:
+        - summary (dict): A dictionary containing cluster information.
+        - embeddings (temp[int, tensor]): A dictionary containing embeddings.
+        - neighbourhood_id (int): The identifier for the neighborhood.
+
+        Returns:
+        - Tuple[np.ndarray, float]: A tuple containing color (average of PCA-transformed embeddings) and
+          and difference between all embeddings and the summary embeddings.
+        """
         summary = kwargs['summary']
-        data: temp[int, tensor] = kwargs['embeddings']
+        data: dict[int, tensor] = kwargs['embeddings']
         neighbourhood_id = kwargs['neighbourhood_id']
 
         summary_embeddings = []
