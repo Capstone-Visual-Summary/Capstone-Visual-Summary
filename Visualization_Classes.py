@@ -219,7 +219,7 @@ class VisualizationPLT2(VisualizationParent):
         desired_pixel_width = 400  # Maximum pixel width
         dpi = desired_pixel_width / fig_width_in_inches  # Calculate the DPI
 
-        save_path_complete = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}_E{embedder_version}_S{summarization_version}_complete.png"
+        save_path_complete = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}_E{str(embedder_version).split('.')[0]}_{str(embedder_version).split('.')[1]}_S{str(summarization_version).split('.')[0]}_{str(summarization_version).split('.')[1]}__complete.png"
         fig.savefig(save_path_complete, dpi=dpi)
 
         #create a second plot only containing the summary
@@ -246,8 +246,8 @@ class VisualizationPLT2(VisualizationParent):
         fig_width_in_inches = fig.get_size_inches()[0]  # Get the width of the figure in inches
         desired_pixel_width = 400  # Maximum pixel width
         dpi = desired_pixel_width / fig_width_in_inches  # Calculate the DPI
-
-        save_path_summary = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}_E{embedder_version}_S{summarization_version}_summary.png"
+        
+        save_path_summary = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}_E{str(embedder_version).split('.')[0]}_{str(embedder_version).split('.')[1]}_S{str(summarization_version).split('.')[0]}_{str(summarization_version).split('.')[1]}_summary.png"
         fig.savefig(save_path_summary, dpi=dpi)
 
         return save_path_complete, save_path_summary
