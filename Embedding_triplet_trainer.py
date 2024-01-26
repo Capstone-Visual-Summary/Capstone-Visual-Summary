@@ -302,11 +302,11 @@ for epoch in range(num_epochs):
 with open('loss_and_time_per_epoch.csv', 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['Epoch', 'Train Loss', 'Val Loss', 'Time'])
-    for epoch, train_loss, val_loss, time in zip(range(1, num_epochs+1), epoch_losses, val_losses, epoch_times):
-        writer.writerow([epoch, train_loss, val_loss, time])
+    for epoch, train_loss, val_loss, epoch_time in zip(range(1, num_epochs+1), epoch_losses, val_losses, epoch_times):
+        writer.writerow([epoch, int(train_loss), int(val_loss), epoch_time])
 
 # Create a DataFrame with loss and time per epoch
-df = pd.DataFrame(list(zip(range(1, num_epochs+1), epoch_losses, val_losses, epoch_times))),
+df = pd.DataFrame(list(zip(range(1, num_epochs+1), epoch_losses, val_losses, epoch_times)), columns=['Epoch', 'Train Loss', 'Val Loss', 'Time'])
 columns = ['Epoch', 'Train Loss', 'Val Loss', 'Time']
 
 # Print the DataFrame

@@ -20,8 +20,7 @@ class EmbeddingParent(GrandParent):
         self.children_names: set[int] = set()
 
     def run(self, **kwargs):
-        version = kwargs['embedding_version'] if 'embedding_version' in kwargs else 1.0
-        
+        version = kwargs['embedding_version'] if 'embedding_version' in kwargs else -1
         return super().run(version, **kwargs)
 
     def get_file_path(self, version, img_id_com) -> str:
