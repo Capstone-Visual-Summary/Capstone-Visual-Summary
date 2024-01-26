@@ -22,40 +22,53 @@ from sklearn.decomposition import PCA
 
 class VisualizationParent(GrandParent):
     def __init__(self) -> None:
-        self.type = "Visualization"
+        self.type = "Visulization"
         self.children: dict[str, dict[str, Union[str, VisualizationParent]]] = dict()
         self.children_names: set[int] = set()
 
-    def run(self, **kwargs): # type: ignore
+    def run(self, **kwargs):
         version = kwargs['visualization_version'] if 'visualization_version' in kwargs else -1
-
-        return super().run(version, **kwargs) # type: ignore
+        return super().run(version, **kwargs)
     
-    def min_max_colors_opacity(self, unprocessed_data) -> dict[str, torch.Tensor]:
+    def min_max_colors_opacity(self, unprocessed_data) -> dict[str, tuple[torch.Tensor, float]]:
+        # TODO Absolute opacity not relative opacity 
+
         global_min_color_red: float | torch.Tensor = float('inf')
         global_max_color_red: float | torch.Tensor = -float('inf')
         global_min_color_green: float | torch.Tensor = float('inf')
         global_max_color_green: float | torch.Tensor = -float('inf')
         global_min_color_blue: float | torch.Tensor = float('inf')
         global_max_color_blue: float | torch.Tensor = -float('inf')
+        global_min_opacity = float('inf')
+        global_max_opacity = -float('inf')
 
         for neighbourhood_id, color_tensor in unprocessed_data.items():
-            global_min_color_red = color_tensor[0] if color_tensor[0] < global_min_color_red else global_min_color_red
-            global_max_color_red = color_tensor[0] if color_tensor[0] > global_max_color_red else global_max_color_red
-            global_min_color_green = color_tensor[1] if color_tensor[1] < global_min_color_green else global_min_color_green
-            global_max_color_green = color_tensor[1] if color_tensor[1] > global_max_color_green else global_max_color_green
-            global_min_color_blue = color_tensor[2] if color_tensor[2] < global_min_color_blue else global_min_color_blue
-            global_max_color_blue = color_tensor[2] if color_tensor[2] > global_max_color_blue else global_max_color_blue
+            global_min_color_red = color_tensor[0][0] if color_tensor[0][0] < global_min_color_red else global_min_color_red
+            global_max_color_red = color_tensor[0][0] if color_tensor[0][0] > global_max_color_red else global_max_color_red
+            global_min_color_green = color_tensor[0][1] if color_tensor[0][1] < global_min_color_green else global_min_color_green
+            global_max_color_green = color_tensor[0][1] if color_tensor[0][1] > global_max_color_green else global_max_color_green
+            global_min_color_blue = color_tensor[0][2] if color_tensor[0][2] < global_min_color_blue else global_min_color_blue
+            global_max_color_blue = color_tensor[0][2] if color_tensor[0][2] > global_max_color_blue else global_max_color_blue
+            global_min_opacity = color_tensor[1] if color_tensor[1] < global_min_opacity else global_min_opacity
+            global_max_opacity = color_tensor[1] if color_tensor[1] > global_max_opacity else global_max_opacity
 
-        normalized_data: dict[str, torch.Tensor] = dict()
+        normalized_data = dict()
 
         for neighbourhood_id, color_tensor in unprocessed_data.items():
-            normalized_red = (unprocessed_data[neighbourhood_id][0] - global_min_color_red) / (global_max_color_red - global_min_color_red) * 255
-            normalized_green = (unprocessed_data[neighbourhood_id][1] - global_min_color_green) / (global_max_color_green - global_min_color_green) * 255
-            normalized_blue = (unprocessed_data[neighbourhood_id][2] - global_min_color_blue) / (global_max_color_blue - global_min_color_blue) * 255
+            normalized_red = (unprocessed_data[neighbourhood_id][0][0] - global_min_color_red) / (global_max_color_red - global_min_color_red) * 255
+            normalized_green = (unprocessed_data[neighbourhood_id][0][1] - global_min_color_green) / (global_max_color_green - global_min_color_green) * 255
+            normalized_blue = (unprocessed_data[neighbourhood_id][0][2] - global_min_color_blue) / (global_max_color_blue - global_min_color_blue) * 255
             normalized_tensor = torch.tensor([normalized_red, normalized_green, normalized_blue])
+
+            if len(unprocessed_data) > 1:
+                if global_min_opacity < 0.2:
+                    normalized_opacity = (unprocessed_data[neighbourhood_id][1] * (1 - 0.2) + 0.2)
+                else:
+                    normalized_opacity = max((unprocessed_data[neighbourhood_id][1] - global_min_opacity) / (global_max_opacity - global_min_opacity), 0.2)
+            else:
+                normalized_opacity = (unprocessed_data[neighbourhood_id][1] * (1 - 0.2) + 0.2)
             
-            normalized_data[neighbourhood_id] = normalized_tensor
+            normalized_data[neighbourhood_id] = (normalized_tensor, normalized_opacity)
         
         return normalized_data
     
@@ -64,7 +77,6 @@ class VisualizationParent(GrandParent):
         neighbourhoods = kwargs['neighbourhoods']
 
         color_getter = VisualizationVerification()
-        summary_image_getter = VisualizationPLT2()
 
         visualization_data: dict[str, torch.Tensor] = dict()
         summary_images: dict[str, str] = dict()
@@ -91,7 +103,8 @@ class VisualizationParent(GrandParent):
         else:
             map_neighbourhoods_vis_data = normalized_data
         
-        colors = {key: value.tolist() for key, value in map_neighbourhoods_vis_data.items()}
+        colors = {key: value[0].tolist() for key, value in map_neighbourhoods_vis_data.items()}
+        opacity = {key: value[1] for key, value in map_neighbourhoods_vis_data.items()}
 
         return map_neighbourhoods_vis_data, colors, summary_images, summary_images_ids
     
@@ -111,51 +124,49 @@ class VisualizationParent(GrandParent):
 
         webbrowser.open('file://' + os.path.abspath('Output.html'), new=2)
 
-        
+
 class VisualizationPLT(VisualizationParent):
+    """
+    VisualizationPLT
+
+    A class that extends VisualizationParent and provides methods for generating and saving visual summaries
+    of clusters in a neighborhood using the PLT library.
+
+    Attributes:
+    - version (float | str): The version number of the visualization tool.
+    - name (str): The name of the visualization tool.
+
+    Methods:
+    - run(**kwargs): Generates and saves visual summaries of clusters in a neighborhood.
+
+    Parameters:
+    - summary (dict): A dictionary containing cluster information.
+    - images (DataFrame): A DataFrame containing image information.
+    - neighbourhood_id (int): The identifier for the neighborhood.
+    - embedder_version (float): The version number of the embedder used.
+    - summarization_version (float): The version number of the summarization algorithm used.
+
+    Returns:
+    - Tuple[str, str]: A tuple of file paths for the complete and summary visualizations.
+    """
     def __init__(self) -> None:
         self.version: float | str = 1.0
         self.name: str = "PLT"
 
     def run(self, **kwargs):
-        summary = kwargs['summary']
-        images = kwargs['images']
-        embeddings = kwargs['embeddings']
+        """
+        Generates and saves visual summaries of clusters in a neighborhood using the PLT library.
 
-        width = len(summary)
+        Parameters:
+        - summary (dict): A dictionary containing cluster information.
+        - images (DataFrame): A DataFrame containing image information.
+        - neighbourhood_id (int): The identifier for the neighborhood.
+        - embedder_version (float): The version number of the embedder used.
+        - summarization_version (float): The version number of the summarization algorithm used.
 
-        height = 0
-        for cluster in summary:
-            height = len(summary[cluster]['cluster']) if len(summary[cluster]['cluster']) > height else height
-        
-        fig, axs = plt.subplots(height+1, width, figsize=(50, 50))
-
-        colors = ['blue', 'orange', 'green', 'red', 'purple', 'brown', 'pink', 'gray']
-
-        for col, cluster in enumerate(summary):
-            color = colors[col]
-            path = images.loc[(images['img_id_com'] == int(summary[cluster]['selected'])), 'path'].iloc[0]
-            img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + path)
-            img = ImageOps.expand(img, border=30, fill=  color)
-            axs[0][col].imshow(img)
-            axs[0][col].axis('off')
-            for row in range(0, height):
-                if row < len(summary[cluster]['cluster']):
-                    path = images.loc[(images['img_id_com'] == int(summary[cluster]['cluster'][row])), 'path'].iloc[0]
-                    img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + path)
-                    img = ImageOps.expand(img, border=30, fill=  color)
-                    axs[row+1][col].imshow(img)
-                axs[row+1][col].axis('off')
-
-        plt.show()
-  
-
-class VisualizationPLT2(VisualizationParent):
-    def __init__(self) -> None:
-        self.version: float | str = 1.1
-        self.name: str = "PLT2"
-
-    def run(self, **kwargs):
+        Returns:
+        - Tuple[str, str]: A tuple of file paths for the complete and summary visualizations.
+        """
         summary = kwargs['summary']
         images = kwargs['images']
         neighbourhood_id = kwargs['neighbourhood_id']
@@ -175,7 +186,7 @@ class VisualizationPLT2(VisualizationParent):
             col_height = math.ceil(max_cluster/col_width)
         
         fig = plt.figure(figsize=(col_width + col_height, n_clusters * col_width), facecolor='#404040')
-        fig.suptitle(f'Neighbourhood {neighbourhood_id}')
+        fig.set_title('Neighbourhood ',neighbourhood_id)
 
         # Define the main layout
         outer_grid = gridspec.GridSpec(2, n_clusters, wspace=0.1, hspace=0.1)
@@ -252,13 +263,44 @@ class VisualizationPLT2(VisualizationParent):
 
     
 class VisualizationVerification(VisualizationParent):
+    """
+    VisualizationVerification
+
+    A class that extends VisualizationParent and provides methods for visual verification of embeddings
+    using PCA and average percentage difference.
+
+    Attributes:
+    - version (float | str): The version number of the visualization tool.
+    - name (str): The name of the visualization tool.
+
+    Methods:
+    - run(**kwargs): Generates and returns color and average percentage difference based on embeddings.
+    - tensor_average_percentage_difference(group1: list[torch.Tensor], group2: list[torch.Tensor]): 
+      Calculates the average percentage difference between two groups of tensors.
+    - train_pca_on_data(dict_of_dicts): Trains a PCA model on the provided data.
+    - transform_tuples_with_pca(pca, tuple_list): Transforms a list of tuples using a trained PCA model.
+    - average_of_transformed(dict_of_dicts, pca): Calculates the average of transformed data for each key in a dictionary.
+    """
+
     def __init__(self) -> None:
         self.version: float | str = '2.0'
         self.name: str = "Verification"
 
-    def run(self, **kwargs) -> tuple[torch.Tensor, torch.Tensor]: # type: ignore
+    def run(self, **kwargs):
+        """
+        Generates and returns color and difference between all embeddings and the summary embeddings.
+
+        Parameters:
+        - summary (dict): A dictionary containing cluster information.
+        - embeddings (temp[int, tensor]): A dictionary containing embeddings.
+        - neighbourhood_id (int): The identifier for the neighborhood.
+
+        Returns:
+        - Tuple[np.ndarray, float]: A tuple containing color (average of PCA-transformed embeddings) and
+          and difference between all embeddings and the summary embeddings.
+        """
         summary = kwargs['summary']
-        data: dict[str, torch.Tensor] = kwargs['embeddings']
+        data: dict[int, tensor] = kwargs['embeddings']
         neighbourhood_id = kwargs['neighbourhood_id']
 
         summary_embeddings = []
@@ -281,7 +323,7 @@ class VisualizationVerification(VisualizationParent):
 
         return(color, difference)
         
-    def tensor_average_percentage_difference(self, group1: list[torch.Tensor], group2: list[torch.Tensor]) -> torch.Tensor:
+    def tensor_average_percentage_difference(self, group1: list[torch.Tensor], group2: list[torch.Tensor]):
         # Check if groups are not empty
         if not group1 or not group2:
             raise ValueError("Input tensor groups should not be empty")
