@@ -24,8 +24,8 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
                     - embedder_version (float): The version of the embedder to use. Defaults to the newest version.
                     - max_files (int): Limits the number of embedding files loaded to memory. Defaults to 1000.
                     - summarization_version (float): The version of the summarization algorithm to use. Defaults to the newest version.
-                    - N_clusters (int): The number of clusters to create in the summarization algorithm. Defaults to 3.
-                    - N_dimensions (int): The number of dimensions to use in the embedding algorithm. Defaults to 25.
+                    - n_clusters (int): The number of clusters to create in the summarization algorithm. Defaults to 5.
+                    - n_dimensions (int): The number of dimensions to use in the embedding algorithm. Defaults to 25.
                     - visualization_version (float): The version of the visualization algorithm to use. Defaults to the newest version.
                     - visualize (bool): Whether to visualize the results. Defaults to True.
                     - file_name (str): The name of the file to save the results. Defaults to an empty string.

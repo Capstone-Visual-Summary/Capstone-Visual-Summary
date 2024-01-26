@@ -670,7 +670,7 @@ class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer
         if n_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
             n_clusters = 5
-        self.create_dendrogram_plot(data=pca_data, n_clusters=n_clusters)
+        # self.create_dendrogram_plot(data=pca_data, n_clusters=n_clusters)
         hierarchical = self.apply_hierarchical(
             data=pca_data, n_clusters=n_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=pca_data)
@@ -856,7 +856,7 @@ if __name__ == "__main__":
         summarization_version=3.2,
         data=data,
         n_dimensions=25,
-        n_clusters=4,
+        n_clusters=5,
         min_samples=6
     )
 
