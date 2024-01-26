@@ -11,6 +11,7 @@ import ast
 import os
 from torchvision import transforms
 from torchvision.models.resnet import ResNet152_Weights
+from typing import List, Dict, Any
 
 class EmbeddingParent(GrandParent):
     def __init__(self) -> None:
@@ -19,7 +20,7 @@ class EmbeddingParent(GrandParent):
         self.children_names: set[int] = set()
 
     def run(self, **kwargs):
-        version = kwargs['embedding_version'] if 'embedding_version' in kwargs else -1
+        version = kwargs['embedding_version'] if 'embedding_version' in kwargs else 1.0
         
         return super().run(version, **kwargs)
 
@@ -61,8 +62,8 @@ class EmbeddingResNet(EmbeddingParent):
             """
             self.version: float | str = 1.0
             self.name: str = "EmbeddingResNet 1.0"
-            self.files_in_memory = []
-            self.image_embeddings = dict()
+            self.files_in_memory: List[str] = []
+            self.image_embeddings: Dict[str, Any] = dict()
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
         """
@@ -138,7 +139,7 @@ class EmbeddingResNet(EmbeddingParent):
 
 class EmbeddingResNet_2_0(EmbeddingParent):
     """
-    Class representing the EmbeddingResNet 2.0 model.
+    Class representing the EmbeddingResNet 2.0 model, without the last two layers.
 
     Attributes:
         version (float | str): The version of the model.
@@ -146,7 +147,7 @@ class EmbeddingResNet_2_0(EmbeddingParent):
 
     Methods:
         Image2Vec_embedder_ResNet152(image) -> torch.Tensor:
-            Converts an image to a vector embedding using the ResNet152 model.
+            Converts an image to a vector embedding using the ResNet152 model, without the last 2 layers.
 
         run(**kwargs) -> torch.Tensor:
             Runs the model to generate image embeddings.
