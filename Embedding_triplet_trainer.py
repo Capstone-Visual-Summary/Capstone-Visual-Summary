@@ -17,11 +17,29 @@ from tabulate import tabulate
 # Assuming the correct device is set (e.g., "cuda" if a GPU is available)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 num_triplets = None  # Define the number of triplets to use for training (None means all triplets)
-embedding_size = 2048  # Define the embedding size (must be the same as the output of the embedding layer)
+embedding_size = 2048  # Define the embedding size; i.e., the size of the output vector from the ResNet152 model
+num_epochs = 20 # Define the number of epochs to train for
 
 class TripletLoss(nn.Module):
     """
     Triplet Loss module.
+
+    This class implements the Triplet Loss module, which is commonly used in metric learning tasks.
+    Triplet Loss aims to learn embeddings such that the distance between the anchor and the positive sample is minimized,
+    while the distance between the anchor and the negative sample is maximized.
+
+    Args:
+        margin (float): The margin value for the triplet loss. Default is 1.0.
+
+    Attributes:
+        margin (float): The margin value for the triplet loss.
+
+    Methods:
+        forward(anchor, positive, negative): Computes the triplet loss given the anchor, positive, and negative samples.
+
+    Example usage:
+        loss_fn = TripletLoss(margin=0.5)
+        loss = loss_fn(anchor, positive, negative)
     """
     def __init__(self, margin=1.0):
         super(TripletLoss, self).__init__()
@@ -228,7 +246,6 @@ data = [
 
 print(tabulate(data, headers=['Data', 'Length']))
 
-num_epochs = 20
 epoch_losses = []
 val_losses = []
 epoch_times = []
@@ -280,25 +297,32 @@ for epoch in range(num_epochs):
     if model is not None:
         print('Model saved successfully')
 
+
+# Write loss and time per epoch to a CSV file
 with open('loss_and_time_per_epoch.csv', 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['Epoch', 'Train Loss', 'Val Loss', 'Time'])
     for epoch, train_loss, val_loss, time in zip(range(1, num_epochs+1), epoch_losses, val_losses, epoch_times):
         writer.writerow([epoch, train_loss, val_loss, time])
 
+# Create a DataFrame with loss and time per epoch
 df = pd.DataFrame(list(zip(range(1, num_epochs+1), epoch_losses, val_losses, epoch_times))),
 columns = ['Epoch', 'Train Loss', 'Val Loss', 'Time']
 
+# Print the DataFrame
 print(df)
 
+# Find the minimum and maximum indices of the train and val datasets
 train_min_x = min(train_dataset.indices)
 train_max_x = max(train_dataset.indices)
 val_min_x = min(val_dataset.indices)
 val_max_x = max(val_dataset.indices)
 
+# Print the minimum and maximum indices of the train and val datasets
 print('Min and max of train dataset: ', train_min_x, train_max_x)
 print('Min and max of val dataset: ', val_min_x, val_max_x)
 
+# Plot the training time curve
 plt.figure(figsize=(10, 6))
 plt.plot(range(1, num_epochs + 1), epoch_times, marker='o', linestyle='-', color='blue')
 plt.title('Training Time Curve')
@@ -307,13 +331,16 @@ plt.ylabel('Time')
 plt.xticks(range(1, num_epochs + 1))
 plt.grid(True)
 
+# Annotate the plot with the minimum indices of the train and val datasets
 plt.annotate(f'Train Min: {train_min_x}', xy=(1, train_min_x), xytext=(1, train_min_x + 10),
              arrowprops=dict(facecolor='black', arrowstyle='->'))
 plt.annotate(f'Val Min: {val_min_x}', xy=(1, val_min_x), xytext=(1, val_min_x - 10),
              arrowprops=dict(facecolor='black', arrowstyle='->'))
 
+# Show the plot
 plt.show()
 
+# Plot the training time curve again
 plt.figure(figsize=(10, 6))
 plt.plot(range(1, num_epochs + 1), epoch_times, marker='o', linestyle='-', color='blue')
 plt.title('Training Time Curve')
@@ -322,3 +349,4 @@ plt.ylabel('Time')
 plt.xticks(range(1, num_epochs + 1))
 plt.grid(True)
 plt.show()
+
