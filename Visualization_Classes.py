@@ -72,17 +72,25 @@ class VisualizationParent(GrandParent):
         
         return normalized_data
     
-    def process_visualization_data(self, **kwargs):
+    def process_visualization_data(self, **kwargs) -> tuple[dict[str, torch.Tensor], dict[str, list[int]], dict[str, str], list[int]]:
         summaries = kwargs['summaries']
         neighbourhoods = kwargs['neighbourhoods']
 
         color_getter = VisualizationVerification()
 
-        visualization_data = dict()
+        visualization_data: dict[str, torch.Tensor] = dict()
+        summary_images: dict[str, str] = dict()
+        summary_images_ids: list[int] = []
 
         for neighbourhood_id in tqdm(summaries, total=len(summaries)):
-            temp_storage = color_getter.run(summary=summaries[neighbourhood_id], neighbourhood_id=neighbourhood_id, **kwargs)
-            visualization_data[neighbourhood_id] = (torch.Tensor(temp_storage[0]), temp_storage[1])
+            for cluster_num, cluster in summaries[neighbourhood_id].items():
+                summary_images_ids.append(int(cluster['selected']))
+
+            temp_storage_color = color_getter.run(summary=summaries[neighbourhood_id], neighbourhood_id=neighbourhood_id, **kwargs)
+            temp_storage_image = summary_image_getter.run(summary=summaries[neighbourhood_id], neighbourhood_id=neighbourhood_id, **kwargs)
+
+            visualization_data[neighbourhood_id] = torch.Tensor(temp_storage_color[0])
+            summary_images[neighbourhood_id] = temp_storage_image[1]
 
         normalized_data = self.min_max_colors_opacity(visualization_data)
         
@@ -98,17 +106,20 @@ class VisualizationParent(GrandParent):
         colors = {key: value[0].tolist() for key, value in map_neighbourhoods_vis_data.items()}
         opacity = {key: value[1] for key, value in map_neighbourhoods_vis_data.items()}
 
-        return map_neighbourhoods_vis_data, colors, opacity
+        return map_neighbourhoods_vis_data, colors, summary_images, summary_images_ids
     
-    def generate_map(self, config, neighbourhoods, map_neighbourhoods_vis_data):
+    def generate_map(self, config, neighbourhoods, map_neighbourhoods_vis_data, summary_images_ids, images) -> None:
+        images = images.loc[images['img_id_com'].isin(summary_images_ids)]
+
         visual_map = KeplerGl(height=400, config=config)
+        visual_map.add_data(images, name='Summary Images')
 
         for neighbourhood_id in map_neighbourhoods_vis_data:
             if 'BU_NAAM' in neighbourhoods:
                 visual_map.add_data(neighbourhoods.loc[neighbourhoods['BU_NAAM'] == neighbourhood_id], name=neighbourhood_id)
             else:
                 visual_map.add_data(neighbourhoods.loc[neighbourhoods['neighbourhood_id'] == int(neighbourhood_id)], name=neighbourhood_id)
-        
+
         visual_map.save_to_html(file_name='Output.html')
 
         webbrowser.open('file://' + os.path.abspath('Output.html'), new=2)
@@ -217,12 +228,12 @@ class VisualizationPLT(VisualizationParent):
         desired_pixel_width = 400  # Maximum pixel width
         dpi = desired_pixel_width / fig_width_in_inches  # Calculate the DPI
 
-        save_path_complete = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}_E{str(embedder_version).split('.')[0]}_{str(embedder_version).split('.')[1]}_S{str(summarization_version).split('.')[0]}_{str(summarization_version).split('.')[1]}__complete.png"
+        save_path_complete = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}E{str(embedder_version).split('.')[0]}{str(embedder_version).split('.')[1]}S{str(summarization_version).split('.')[0]}{str(summarization_version).split('.')[1]}__complete.png"
         fig.savefig(save_path_complete, dpi=dpi)
 
         #create a second plot only containing the summary
         fig = plt.figure(figsize=(n_clusters * 5, 5), facecolor='#404040')
-        fig.set_title('Neighbourhood ',neighbourhood_id)
+        fig.suptitle(f'Neighbourhood {neighbourhood_id}')
 
         # Define the main layout
         outer_grid = gridspec.GridSpec(1, n_clusters, wspace=0.1, hspace=0.1)
@@ -244,8 +255,8 @@ class VisualizationPLT(VisualizationParent):
         fig_width_in_inches = fig.get_size_inches()[0]  # Get the width of the figure in inches
         desired_pixel_width = 400  # Maximum pixel width
         dpi = desired_pixel_width / fig_width_in_inches  # Calculate the DPI
-        
-        save_path_summary = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}_E{str(embedder_version).split('.')[0]}_{str(embedder_version).split('.')[1]}_S{str(summarization_version).split('.')[0]}_{str(summarization_version).split('.')[1]}_summary.png"
+
+        save_path_summary = f"./Visual_Summaries/neighbourhood_{neighbourhood_id}E{str(embedder_version).split('.')[0]}{str(embedder_version).split('.')[1]}S{str(summarization_version).split('.')[0]}{str(summarization_version).split('.')[1]}_summary.png"
         fig.savefig(save_path_summary, dpi=dpi)
 
         return save_path_complete, save_path_summary
@@ -348,52 +359,137 @@ class VisualizationVerification(VisualizationParent):
         return averages
 
 
-class VisualizationInteractiveMapBorder(VisualizationParent):
+class VisualizationCOLOR(VisualizationParent):
+    def __init__(self) -> None:
+        self.version: float | str = '1.2 WIP'
+        self.name: str = "COLOR"
+
+    def run(self, **kwargs) -> tuple[torch.Tensor, float]: # type: ignore
+        summary = kwargs['summary']
+        images = kwargs['images']
+        data: dict[str, torch.Tensor] = kwargs['embeddings']
+        neighbourhood_id = kwargs['neighbourhood_id']
+
+        summary_embeddings = []
+        for cluster in summary:
+            id = (summary[cluster]['selected'])
+            if id in data[str(neighbourhood_id)]:
+                summary_embeddings.append(data[str(neighbourhood_id)][id])
+            else:
+                raise ValueError('id not in neighbourhood embeddings')
+
+        neighbourhood_embeddings = [data[str(neighbourhood_id)][key] for key in data[str(neighbourhood_id)]]
+
+        percentage = self.tensor_average_percentage_difference(neighbourhood_embeddings, summary_embeddings)
+
+        #add some functionality to only train pca once and store it as an attribute
+        if not hasattr(self, 'pca'):
+            self.pca = self.train_pca_on_data(data)
+        
+        result = self.transform_tuples_with_pca(self.pca, neighbourhood_embeddings)
+        color = np.mean(result, axis=0)
+
+        return(color, percentage)
+
+    def tensor_average_percentage_difference(self, group1: list[torch.Tensor], group2: list[torch.Tensor]):
+        # Check if groups are not empty
+        if not group1 or not group2:
+            raise ValueError("Input tensor groups should not be empty")
+
+        # Calculate the average tensor for each group
+        avg_tensor1 = sum(group1) / len(group1)
+        avg_tensor2 = sum(group2) / len(group2)
+
+        # Calculate the norm of the difference and of group 1
+        norm1 = torch.norm(avg_tensor1).item()
+        norm2 = torch.norm(avg_tensor1 - avg_tensor2).item()
+
+        if norm1 != 0:
+            size = norm2/norm1
+        else:
+            size = 1
+        return size
+
+    def train_pca_on_data(self, dict_of_dicts):
+        # Flatten the tuples into a list
+        data = [tup for subdict in dict_of_dicts.values() for tup in subdict.values()]
+
+        # Train PCA model
+        pca = PCA(n_components=3)
+        pca.fit(data)
+        return pca
+
+    def transform_tuples_with_pca(self, pca, tuple_list):
+        # Transform the list of tuples using the trained PCA
+        transformed_data = pca.transform(tuple_list)
+        return transformed_data
+
+    def average_of_transformed(self, dict_of_dicts, pca):
+        averages = {}
+        for key, subdict in dict_of_dicts.items():
+            transformed_data = transform_tuples_with_pca(pca, list(subdict.values()))
+            averages[key] = np.mean(transformed_data, axis=0)
+        return averages
+
+
+class VisualizationInteractiveMap(VisualizationParent):
     def __init__(self) -> None:
         self.version: float | str = 3.0
-        self.name: str = 'Interactive Map Accurarcy Border'
+        self.name: str = 'Interactive Map'
 
-    def run(self, **kwargs):
-        # TODO ADD PICTURE SUMMARY PER NEIGHBOURHOOD
+    def run(self, **kwargs) -> None: # type: ignore
+        """
+        Based on the summaries, creates an interactive map of the neighbourhoods, with colour similarity,
+        and upon hovering, show the image summary of the neighbourhood and where the sumary images are located in the neighbourhood
+        Saves and opens an html file
+        """
+
         neighbourhoods = kwargs['neighbourhoods']
-        neighbourhoods['<img>-summary'] = 'Figure_1 Resize 2.png'
         
-        map_neighbourhoods_vis_data, colors, opacity = self.process_visualization_data(**kwargs)
+        map_neighbourhoods_vis_data, colors, summary_images, summary_images_ids = self.process_visualization_data(**kwargs)
 
-        config = generate_config(colors, opacity, border_opacity=True, border_visible=True)
-
-        self.generate_map(config, neighbourhoods, map_neighbourhoods_vis_data)
-
-
-class VisualizationInteractiveMapBorderVisible(VisualizationParent):
-    def __init__(self) -> None:
-        self.version: float | str = 3.1
-        self.name: str = 'Interactive Map Accurarcy Fill Border Visible'
-
-    def run(self, **kwargs):
-        # TODO ADD PICTURE SUMMARY PER NEIGHBOURHOOD
-        neighbourhoods = kwargs['neighbourhoods']
-        neighbourhoods['<img>-summary'] = 'Figure_1 Resize 2.png'
+        for neighbourhood_id, summary_image in summary_images.items():
+            neighbourhoods.loc[neighbourhoods['neighbourhood_id'] == int(neighbourhood_id), '<img>-summary'] = summary_image
         
-        map_neighbourhoods_vis_data, colors, opacity = self.process_visualization_data(**kwargs)
-
-        config = generate_config(colors, opacity, border_opacity=False, border_visible=True)
-
-        self.generate_map(config, neighbourhoods, map_neighbourhoods_vis_data)
+        config = generate_config(colors)
+        self.generate_map(config, neighbourhoods, map_neighbourhoods_vis_data, summary_images_ids, kwargs['images'])
 
 
-class VisualizationInteractiveMapOnlyFill(VisualizationParent):
-    def __init__(self) -> None:
-        self.version: float | str = 3.2
-        self.name: str = 'Interactive Map Accurarcy Fill'
+if __name__ == '__main__':
+    # summary = {'7': {'Cluster 0': {'selected': '52616', 'cluster': ['52616', '52617', '52620', '52621', '52624', '52625', '52628', '52629', '52630', '52631', '52632', '52634', '52635', '52268', '52269', '52270', '52271', '52272', '52273', '52274', '52276', '52278', '52280', '52281', '52282', '52284', '52285', '52286']}, 'Cluster 1': {'selected': '52277', 'cluster': ['52618', '52619', '52622', '52623', '52626', '52627', '52633', '52275', '52277', '52279', '52283', '52287']}}}
+    summary = {'8': {'Cluster 1': {'selected': '52248', 'cluster': ['52244', '52245', '52246', '52247', '52248', '52249', '52250', '52251', '52252', '52253', '52254', '52255']}},
+               '7': {'Cluster 0': {'selected': '52277', 'cluster': ['52616', '52617', '52620', '52621', '52624', '52625', '52628', '52629', '52630', '52631', '52632', '52634', '52635', '52268', '52269', '52270', '52271', '52272', '52273', '52274', '52276', '52278', '52280', '52281', '52282', '52284', '52285', '52286']},
+                     'Cluster 1': {'selected': '52277', 'cluster': ['52618', '52619', '52622', '52623', '52626', '52627', '52633', '52275', '52277', '52279', '52283', '52287']}}}
+    # images = gpd.read_file('Hardcoded_Images.geojson')
+    
+    # embeddings = dict()
+    # with open('Hardcoded_Embeddings.csv', mode='r', newline='', encoding='utf-8') as csvfile:
+    #     temp = csv.DictReader(csvfile, delimiter=';')
+    #     for row in temp:
+    #         embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
+    
+    # image_embeddings = dict()
+    # image_embeddings['7'] = embeddings
 
-    def run(self, **kwargs):
-        # TODO ADD PICTURE SUMMARY PER NEIGHBOURHOOD
-        neighbourhoods = kwargs['neighbourhoods']
-        neighbourhoods['<img>-summary'] = 'Figure_1 Resize 2.png'
+    # Test = VisualizationCOLOR()
+    # Test.run(summary = summary['7'], embeddings=image_embeddings, neighbourhood_id='7', images = images)
+
+    images = gpd.read_file('Hardcoded Images 2 Neighbourhoods.geojson')
+    neighbourhoods = gpd.read_file('Geo-JSON Files/neighbourhood_info_v1_0.geojson')
+    # neighbourhoods['<img>-summary'] = 'Visual_Summaries/neighbourhood_7E10S20_summary.png'
+
+    embedding_neighbourhood = dict()
+
+    for neighbourhood_id in summary:
+        image_embeddings = dict()
+
+        with open('Hardcoded Embeddings 2 Neighbourhoods.csv', mode='r', newline='', encoding='utf-8') as csvfile:
+            temp = csv.DictReader(csvfile, delimiter=';')
+
+            for row in temp:
+                image_embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
         
-        map_neighbourhoods_vis_data, colors, opacity = self.process_visualization_data(**kwargs)
+        embedding_neighbourhood[neighbourhood_id] = image_embeddings
 
-        config = generate_config(colors, opacity, border_opacity=False, border_visible=False)
-
-        self.generate_map(config, neighbourhoods, map_neighbourhoods_vis_data)
+    Test = VisualizationInteractiveMap()
+    Test.run(summaries=summary, embeddings=embedding_neighbourhood, images=images, neighbourhoods=neighbourhoods, embedder_version=1.0, summarization_version=2.0)

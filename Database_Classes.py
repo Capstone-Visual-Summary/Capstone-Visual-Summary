@@ -28,7 +28,6 @@ class DatabaseParent(GrandParent):
         - If a file exists with the right version number, then it will read the neighbourhood pairs from a json file otherwise,
         it will generate a new json file where it is a dictionary with as key the neighbourhood id and the values are which images are included
         Returns: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame], being in order: assigned_neighbourhoods, images, neighbourhoods
-        
         """
         images = gpd.read_file(images_file)
         neighbourhoods = gpd.read_file(neighbourhoods_info_file)
