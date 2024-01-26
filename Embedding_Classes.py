@@ -48,21 +48,21 @@ class EmbeddingParent(GrandParent):
 
 
 class EmbeddingResNet_1_0(EmbeddingParent):
-    class EmbeddingResNet:
-        def __init__(self) -> None:
-            """
-            Initializes an instance of the EmbeddingResNet class.
+    def __init__(self) -> None:
+        """
+        Initializes an instance of the EmbeddingResNet class.
 
-            Attributes:
-            - version (float | str): The version number of the embedding class.
-            - name (str): The name of the embedding class.
-            - files_in_memory (list): A list to store files in memory.
-            - image_embeddings (dict): A dictionary to store image embeddings.
-            """
-            self.version: float | str = 1.0
-            self.name: str = "EmbeddingResNet 1.0"
-            self.files_in_memory: List[str] = []
-            self.image_embeddings: Dict[str, Any] = dict()
+        Attributes:
+        - version (float | str): The version number of the embedding class.
+        - name (str): The name of the embedding class.
+        - files_in_memory (list): A list to store files in memory.
+        - image_embeddings (dict): A dictionary to store image embeddings.
+        """
+        super().__init__()
+        self.version: float | str = 1.0
+        self.name: str = "EmbeddingResNet 1.0"
+        self.files_in_memory: List[str] = []
+        self.image_embeddings: Dict[str, Any] = dict()
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
         """
