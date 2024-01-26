@@ -5,15 +5,10 @@ from KeplerGL_Config import generate_config
 from tqdm import tqdm
 import math as math
 import matplotlib.pyplot as plt
-from PIL import Image, ImageOps
+from PIL import Image
 import torch as torch
-from torch import tensor
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from matplotlib import gridspec
 import numpy as np
-import csv
-import ast
-import geopandas as gpd
 from keplergl import KeplerGl
 import webbrowser
 import os
@@ -30,45 +25,31 @@ class VisualizationParent(GrandParent):
         version = kwargs['visualization_version'] if 'visualization_version' in kwargs else -1
         return super().run(version, **kwargs)
     
-    def min_max_colors_opacity(self, unprocessed_data) -> dict[str, tuple[torch.Tensor, float]]:
-        # TODO Absolute opacity not relative opacity 
-
+    def min_max_colors_opacity(self, unprocessed_data) -> dict[str, torch.Tensor]:
         global_min_color_red: float | torch.Tensor = float('inf')
         global_max_color_red: float | torch.Tensor = -float('inf')
         global_min_color_green: float | torch.Tensor = float('inf')
         global_max_color_green: float | torch.Tensor = -float('inf')
         global_min_color_blue: float | torch.Tensor = float('inf')
         global_max_color_blue: float | torch.Tensor = -float('inf')
-        global_min_opacity = float('inf')
-        global_max_opacity = -float('inf')
 
         for neighbourhood_id, color_tensor in unprocessed_data.items():
-            global_min_color_red = color_tensor[0][0] if color_tensor[0][0] < global_min_color_red else global_min_color_red
-            global_max_color_red = color_tensor[0][0] if color_tensor[0][0] > global_max_color_red else global_max_color_red
-            global_min_color_green = color_tensor[0][1] if color_tensor[0][1] < global_min_color_green else global_min_color_green
-            global_max_color_green = color_tensor[0][1] if color_tensor[0][1] > global_max_color_green else global_max_color_green
-            global_min_color_blue = color_tensor[0][2] if color_tensor[0][2] < global_min_color_blue else global_min_color_blue
-            global_max_color_blue = color_tensor[0][2] if color_tensor[0][2] > global_max_color_blue else global_max_color_blue
-            global_min_opacity = color_tensor[1] if color_tensor[1] < global_min_opacity else global_min_opacity
-            global_max_opacity = color_tensor[1] if color_tensor[1] > global_max_opacity else global_max_opacity
+            global_min_color_red = color_tensor[0] if color_tensor[0] < global_min_color_red else global_min_color_red
+            global_max_color_red = color_tensor[0] if color_tensor[0] > global_max_color_red else global_max_color_red
+            global_min_color_green = color_tensor[1] if color_tensor[1] < global_min_color_green else global_min_color_green
+            global_max_color_green = color_tensor[1] if color_tensor[1] > global_max_color_green else global_max_color_green
+            global_min_color_blue = color_tensor[2] if color_tensor[2] < global_min_color_blue else global_min_color_blue
+            global_max_color_blue = color_tensor[2] if color_tensor[2] > global_max_color_blue else global_max_color_blue
 
-        normalized_data = dict()
+        normalized_data: dict[str, torch.Tensor] = dict()
 
         for neighbourhood_id, color_tensor in unprocessed_data.items():
-            normalized_red = (unprocessed_data[neighbourhood_id][0][0] - global_min_color_red) / (global_max_color_red - global_min_color_red) * 255
-            normalized_green = (unprocessed_data[neighbourhood_id][0][1] - global_min_color_green) / (global_max_color_green - global_min_color_green) * 255
-            normalized_blue = (unprocessed_data[neighbourhood_id][0][2] - global_min_color_blue) / (global_max_color_blue - global_min_color_blue) * 255
+            normalized_red = (unprocessed_data[neighbourhood_id][0] - global_min_color_red) / (global_max_color_red - global_min_color_red) * 255
+            normalized_green = (unprocessed_data[neighbourhood_id][1] - global_min_color_green) / (global_max_color_green - global_min_color_green) * 255
+            normalized_blue = (unprocessed_data[neighbourhood_id][2] - global_min_color_blue) / (global_max_color_blue - global_min_color_blue) * 255
             normalized_tensor = torch.tensor([normalized_red, normalized_green, normalized_blue])
-
-            if len(unprocessed_data) > 1:
-                if global_min_opacity < 0.2:
-                    normalized_opacity = (unprocessed_data[neighbourhood_id][1] * (1 - 0.2) + 0.2)
-                else:
-                    normalized_opacity = max((unprocessed_data[neighbourhood_id][1] - global_min_opacity) / (global_max_opacity - global_min_opacity), 0.2)
-            else:
-                normalized_opacity = (unprocessed_data[neighbourhood_id][1] * (1 - 0.2) + 0.2)
             
-            normalized_data[neighbourhood_id] = (normalized_tensor, normalized_opacity)
+            normalized_data[neighbourhood_id] = normalized_tensor
         
         return normalized_data
     
@@ -77,6 +58,7 @@ class VisualizationParent(GrandParent):
         neighbourhoods = kwargs['neighbourhoods']
 
         color_getter = VisualizationVerification()
+        summary_image_getter = VisualizationPLT()
 
         visualization_data: dict[str, torch.Tensor] = dict()
         summary_images: dict[str, str] = dict()
@@ -108,7 +90,7 @@ class VisualizationParent(GrandParent):
 
         return map_neighbourhoods_vis_data, colors, summary_images, summary_images_ids
     
-    def generate_map(self, config, neighbourhoods, map_neighbourhoods_vis_data, summary_images_ids, images) -> None:
+    def generate_map(self, config, neighbourhoods, map_neighbourhoods_vis_data, summary_images_ids, images, **kwargs) -> None:
         images = images.loc[images['img_id_com'].isin(summary_images_ids)]
 
         visual_map = KeplerGl(height=400, config=config)
@@ -120,9 +102,12 @@ class VisualizationParent(GrandParent):
             else:
                 visual_map.add_data(neighbourhoods.loc[neighbourhoods['neighbourhood_id'] == int(neighbourhood_id)], name=neighbourhood_id)
 
-        visual_map.save_to_html(file_name='Output.html')
+        embedder_version = kwargs['embedder_version']
+        summarization_version = kwargs['summarization_version']
+        file_path = f"Interactive Maps/neighbourhoods_{kwargs['start_hood']}_{kwargs['end_hood']}_E{str(embedder_version).split('.')[0]}{str(embedder_version).split('.')[1]}S{str(summarization_version).split('.')[0]}{str(summarization_version).split('.')[1]}.html"
+        visual_map.save_to_html(file_name=file_path)
 
-        webbrowser.open('file://' + os.path.abspath('Output.html'), new=2)
+        webbrowser.open('file://' + os.path.abspath(file_path), new=2)
 
 
 class VisualizationPLT(VisualizationParent):
@@ -186,13 +171,13 @@ class VisualizationPLT(VisualizationParent):
             col_height = math.ceil(max_cluster/col_width)
         
         fig = plt.figure(figsize=(col_width + col_height, n_clusters * col_width), facecolor='#404040')
-        fig.set_title('Neighbourhood ',neighbourhood_id)
+        fig.suptitle(f'Neighbourhood {neighbourhood_id}')
 
         # Define the main layout
         outer_grid = gridspec.GridSpec(2, n_clusters, wspace=0.1, hspace=0.1)
 
         # Iterate over the main columns
-        for i, cluster in enumerate(summary):
+        for i, cluster in tqdm(enumerate(summary), total=len(summary)):
             # Top subplot for the single image with a title and bottom title
             path = images.loc[(images['img_id_com'] == int(summary[cluster]['selected'])), 'path'].iloc[0]
             img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + path)
@@ -239,7 +224,7 @@ class VisualizationPLT(VisualizationParent):
         outer_grid = gridspec.GridSpec(1, n_clusters, wspace=0.1, hspace=0.1)
 
         # Iterate over the main columns
-        for i, cluster in enumerate(summary):
+        for i, cluster in tqdm(enumerate(summary), total=len(summary)):
             # Top subplot for the single image with a title and bottom title
             path = images.loc[(images['img_id_com'] == int(summary[cluster]['selected'])), 'path'].iloc[0]
             img = Image.open('U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + path)
@@ -286,7 +271,7 @@ class VisualizationVerification(VisualizationParent):
         self.version: float | str = '2.0'
         self.name: str = "Verification"
 
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> tuple[torch.Tensor, float]: #type: ignore
         """
         Generates and returns color and difference between all embeddings and the summary embeddings.
 
@@ -300,7 +285,7 @@ class VisualizationVerification(VisualizationParent):
           and difference between all embeddings and the summary embeddings.
         """
         summary = kwargs['summary']
-        data: dict[int, tensor] = kwargs['embeddings']
+        data: dict[str, torch.Tensor] = kwargs['embeddings']
         neighbourhood_id = kwargs['neighbourhood_id']
 
         summary_embeddings = []
@@ -453,43 +438,3 @@ class VisualizationInteractiveMap(VisualizationParent):
         
         config = generate_config(colors)
         self.generate_map(config, neighbourhoods, map_neighbourhoods_vis_data, summary_images_ids, kwargs['images'])
-
-
-if __name__ == '__main__':
-    # summary = {'7': {'Cluster 0': {'selected': '52616', 'cluster': ['52616', '52617', '52620', '52621', '52624', '52625', '52628', '52629', '52630', '52631', '52632', '52634', '52635', '52268', '52269', '52270', '52271', '52272', '52273', '52274', '52276', '52278', '52280', '52281', '52282', '52284', '52285', '52286']}, 'Cluster 1': {'selected': '52277', 'cluster': ['52618', '52619', '52622', '52623', '52626', '52627', '52633', '52275', '52277', '52279', '52283', '52287']}}}
-    summary = {'8': {'Cluster 1': {'selected': '52248', 'cluster': ['52244', '52245', '52246', '52247', '52248', '52249', '52250', '52251', '52252', '52253', '52254', '52255']}},
-               '7': {'Cluster 0': {'selected': '52277', 'cluster': ['52616', '52617', '52620', '52621', '52624', '52625', '52628', '52629', '52630', '52631', '52632', '52634', '52635', '52268', '52269', '52270', '52271', '52272', '52273', '52274', '52276', '52278', '52280', '52281', '52282', '52284', '52285', '52286']},
-                     'Cluster 1': {'selected': '52277', 'cluster': ['52618', '52619', '52622', '52623', '52626', '52627', '52633', '52275', '52277', '52279', '52283', '52287']}}}
-    # images = gpd.read_file('Hardcoded_Images.geojson')
-    
-    # embeddings = dict()
-    # with open('Hardcoded_Embeddings.csv', mode='r', newline='', encoding='utf-8') as csvfile:
-    #     temp = csv.DictReader(csvfile, delimiter=';')
-    #     for row in temp:
-    #         embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
-    
-    # image_embeddings = dict()
-    # image_embeddings['7'] = embeddings
-
-    # Test = VisualizationCOLOR()
-    # Test.run(summary = summary['7'], embeddings=image_embeddings, neighbourhood_id='7', images = images)
-
-    images = gpd.read_file('Hardcoded Images 2 Neighbourhoods.geojson')
-    neighbourhoods = gpd.read_file('Geo-JSON Files/neighbourhood_info_v1_0.geojson')
-    # neighbourhoods['<img>-summary'] = 'Visual_Summaries/neighbourhood_7E10S20_summary.png'
-
-    embedding_neighbourhood = dict()
-
-    for neighbourhood_id in summary:
-        image_embeddings = dict()
-
-        with open('Hardcoded Embeddings 2 Neighbourhoods.csv', mode='r', newline='', encoding='utf-8') as csvfile:
-            temp = csv.DictReader(csvfile, delimiter=';')
-
-            for row in temp:
-                image_embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
-        
-        embedding_neighbourhood[neighbourhood_id] = image_embeddings
-
-    Test = VisualizationInteractiveMap()
-    Test.run(summaries=summary, embeddings=embedding_neighbourhood, images=images, neighbourhoods=neighbourhoods, embedder_version=1.0, summarization_version=2.0)

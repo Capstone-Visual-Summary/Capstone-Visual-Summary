@@ -1,6 +1,4 @@
-# If you get en error with not being able to find subclasses
 from Database_Classes import DatabaseParent
-# Change the imports to: from ..... import *
 from Embedding_Classes import EmbeddingParent
 from Summarization_Classes import SummarizationParent
 from Visualization_Classes import VisualizationParent
@@ -65,27 +63,19 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
         if int(neighbourhood_id) not in wanted_hoods:
             continue
 
-        # print('Embedding neighbourhood:', neighbourhood_id)
         embeddings = dict()
 
         image_ids = neighbourhood_images[neighbourhood_id]
 
         for image_id in image_ids:
-            # TODO Remove path input to embeddings as embeddings are no longer made during runtime for v1.x
-            #  remove once v2.x has support for this
-            path = images.loc[(images['img_id_com'] ==
-                               image_id), 'path'].iloc[0]
             embeddings[str(image_id)] = embedding_parent.run(
-                image_id=image_id, img_path=path, **kwargs)  # list[float]
+                image_id=image_id, **kwargs)  # list[float]
 
         embedding_neighbourhood[neighbourhood_id] = embeddings
-
-    # print(embedding_neighbourhood)
 
     summaries = dict()
 
     for neighbourhood_id in tqdm(embedding_neighbourhood, desc='Generating summaries'):
-        # print('summarizing neighbourhood:', neighbourhood_id)
         # summaries is of type: tuple[dict[str, list[str]], dict[str, str]], so tuple[clusters, centroids]
         summaries[str(neighbourhood_id)] = summarization_parent.run(
             data=embedding_neighbourhood[str(neighbourhood_id)], **kwargs)
@@ -102,7 +92,7 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
 
 
 if __name__ == '__main__':
-    OneRUNtoRUNthemALL(database_version=3.0, start_hood=14, stop_hood=15, step_size=1,  # start_year=2008, end_year=2022,
+    OneRUNtoRUNthemALL(database_version=3.0, start_hood=0, stop_hood=10, step_size=1,  # start_year=2008, end_year=2022,
                        embedder_version=1.0, max_files=1000,
                        summarization_version=3.0, n_clusters=5, n_dimensions=25,
                        visualization_version=3.0, visualize=True,
