@@ -20,7 +20,6 @@ from scipy.cluster.hierarchy import dendrogram, linkage
 from Grand_Parent import GrandParent
 
 
-
 class SummarizationParent(GrandParent):
     def __init__(self) -> None:
         self.type = "Summerization"
@@ -525,7 +524,7 @@ class SummerizationPCADensityKmeans(SummarizationParent, DimensionalityReducer, 
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
         
         pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
-        N_clusters = self.find_clusters(data=pca_data, plot=True)
+        N_clusters = self.find_clusters(data=pca_data, plot=False)
         if N_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
             N_clusters = 5
@@ -545,7 +544,7 @@ class SummerizationPCADensityDensity(SummarizationParent, DimensionalityReducer,
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
         
         pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
-        N_clusters = self.find_clusters(data=pca_data, plot=True)
+        N_clusters = self.find_clusters(data=pca_data, plot=False)
         if N_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
             N_clusters = 5
@@ -565,7 +564,7 @@ class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer
         N_dimensions = kwargs['N_dimensions'] if 'N_dimensions' in kwargs else 2
         
         pca_data = self.apply_pca(data=data, N_dimensions=N_dimensions)
-        N_clusters = self.find_clusters(data=pca_data, plot=True)
+        N_clusters = self.find_clusters(data=pca_data, plot=False)
         if N_clusters == 0:
             print('No reasonable number of clusters found, using default value of 5')
             N_clusters = 5
@@ -602,52 +601,70 @@ def time_version(**kwargs) -> float:
     standard_error = np.std(times) / np.sqrt(repeats)
     return np.mean(times), standard_error
 
-def tensor_average_percentage_difference(group1: list[torch.Tensor], group2: list[torch.Tensor]):
-        # Check if groups are not empty
-        if not group1 or not group2:
-            raise ValueError("Input tensor groups should not be empty")
+def get_distance(**kwargs):
+    summary = kwargs['summary']
+    data = kwargs['data']
 
-        # Calculate the average tensor for each group
-        avg_tensor1 = sum(group1) / len(group1)
-        avg_tensor2 = sum(group2) / len(group2)
+    summary_embeddings = []
+    for cluster in summary:
+        id = (summary[cluster]['selected'])
+        if id in data:
+            summary_embeddings.append(data[id])
+        else:
+            raise ValueError('id not in neighbourhood embeddings')
+    
+    neighbourhood_embeddings = [data[key] for key in data]
+
+    avg_summary = sum(summary_embeddings) / len(summary_embeddings)
+    avg_neighbourhood = sum(neighbourhood_embeddings) / len(neighbourhood_embeddings)
+
+    difference = torch.norm(avg_summary - avg_neighbourhood).item()
+
+    return(difference)
+
+def distance_version(**kwargs) -> float:
+    
+    distances = []
+    
+    for path in kwargs['paths']:
+        test_data = pd.read_csv(path, delimiter=';')
         
-        # Calculate the norm of the difference and of group 1
-        diffference = torch.norm(avg_tensor1 - avg_tensor2).item()
-
-        return diffference
-
-def accuracy_version(**kwargs) -> float:
-    
-    test_data = pd.read_csv('Embedding Files\Embeddings_v1_0_2392_4783.csv', delimiter=';')
-    repeats = 5
-    
-    data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
-    print(type(data))
-    summarization = SummarizationParent()
-    version = kwargs['summarization_version']
-    
-    accuracies = []
-    for _ in range(repeats):
+        data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
+        summarization = SummarizationParent()
+        version = kwargs['summarization_version']
+        
         output = summarization.run(
             summarization_version=version,
             data=data,
             N_dimensions=10,
             N_clusters=5
         )
-        percentage = tensor_average_percentage_difference()
-        accuracies.append(sum([len(v['cluster'].intersection(v['selected'])) for v in percentage.values()]) / len(data))
+        percentage = get_distance(data=data, summary=output)
+        distances.append(percentage)
     
-    standard_error = np.std(accuracies) / np.sqrt(repeats)
-    return np.mean(accuracies), standard_error
+    standard_error = np.std(distances) / np.sqrt(len(distances))
+    return np.mean(distances), standard_error
 
 def compare_versions() -> pd.DataFrame:
     '''	
     returns a dataframe with the time taken to run each version of the summarization algorithm
     '''	
     repeats = 3
+    paths = [
+        'Embedding Files\Embeddings_v1_0_2392_4783.csv',
+        'Embedding Files\Embeddings_v1_0_4784_7175.csv',
+        'Embedding Files\Embeddings_v1_0_7176_9567.csv',
+    ]
     versions = {
         1.0 : 'PCA  Kmeans',
         2.0 : 'PCA  Hierical',
+        2.1 : 'PCA  Density',
+        2.2 : 'TSNE Kmeans',
+        2.3 : 'TSNE Hierical',
+        2.4 : 'TSNE Density',
+        2.5 : 'UMAP Kmeans',
+        2.6 : 'UMAP Hierical',
+        2.7 : 'UMAP Density',
     }
     
     times = {}
@@ -656,20 +673,17 @@ def compare_versions() -> pd.DataFrame:
         time = f"{mean:.3f} ± {standard_error:.3f}"
         times[versions[version]] = time
     
-
-    accuracy = {}
-    for version in tqdm(versions.keys(), desc='Comparing Accuracy'):
-        mean, standard_error = accuracy_version(data=data, summarization_version=version)
+    distance = {}
+    for version in tqdm(versions.keys(), desc='Comparing Distance'):
+        mean, standard_error = distance_version(paths=paths, summarization_version=version)
         acc = f"{mean:.3f} ± {standard_error:.3f}"
-        accuracy[versions[version]] = acc
+        distance[versions[version]] = acc
 
     
     times_df = pd.DataFrame.from_dict(times, orient='index', columns=['Mean Time (s)'])
-    # accuracy df = pd.DataFrame.from_dict(accuracy, orient='index', columns=['Mean Accuracy (%)'])
-    # merged_df = pd.merge(times_df, accuracy_df, left_index=True, right_index=True)
-    # return merged_df
-    
-    return times_df
+    distance_df = pd.DataFrame.from_dict(distance, orient='index', columns=['Mean Distance (-)'])
+    merged_df = pd.merge(times_df, distance_df, left_index=True, right_index=True)
+    return merged_df
 
 def pretty_print(output):
     for key in sorted(output.keys(), key=lambda x:int(x.split(' ')[1])):
@@ -679,9 +693,10 @@ if __name__ == "__main__":
     
     test_data = pd.read_csv('Embedding Files\data_for_time_comparison.csv', delimiter=',')
     data = {key: torch.tensor(ast.literal_eval(value)) for key, value in test_data.set_index('image_id')['tensor'].to_dict().items()}
-    print(data)
 
-    # print(compare_versions())
+    comparison = compare_versions()
+    comparison.to_csv('comparison.csv')
+    print(comparison)
         
     # summarization = SummarizationParent()
     # output = summarization.run(
