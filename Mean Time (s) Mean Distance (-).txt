@@ -1,0 +1,10 @@
+Mean Time (s),Mean Distance (-)
+PCA  Kmeans,0.311 ± 0.030,5.623 ± 0.000
+PCA  Hierical,0.279 ± 0.005,5.921 ± 0.042
+PCA  Density,1.725 ± 0.010,2.391 ± 0.012
+TSNE Kmeans,22.786 ± 0.155,5.354 ± 0.000
+TSNE Hierical,23.436 ± 0.183,5.071 ± 0.000
+TSNE Density,26.068 ± 0.404,1.434 ± 0.000
+UMAP Kmeans, 10.030 ± 1.188,6.089 ± 0.000
+UMAP Hierical,8.757 ± 0.021,6.414 ± 0.000
+UMAP Density,11.818 ± 0.070,1.091 ± 0.000
