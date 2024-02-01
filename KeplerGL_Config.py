@@ -76,7 +76,7 @@ def generate_config(colors):
 			},
 			'isVisible': True,
 			'visConfig': {
-				'opacity': 0.6,
+				'opacity': 0.4,
 				'strokeOpacity': 0.8,
 				'thickness': 0.5,
 				'strokeColor': [255, 255, 255],

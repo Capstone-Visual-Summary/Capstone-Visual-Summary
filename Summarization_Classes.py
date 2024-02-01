@@ -14,6 +14,8 @@ import torch
 from torch import tensor
 from tqdm import tqdm
 from umap import UMAP
+import csv
+import ast
 
 from Grand_Parent import GrandParent
 
@@ -60,6 +62,37 @@ class SummarizationParent(GrandParent):
                 'cluster': v
             }
         return output
+    
+    def get_summarization_file_name(self, **kwargs):
+        database_version = str(kwargs['database_version']).split('.')
+        embedder_version = str(kwargs['embedder_version']).split('.')
+        summarization_version = str(kwargs['summarization_version']).split('.')
+
+        file_name = f'Summaries/summary_D{database_version[0]}_{database_version[1]}_E{embedder_version[0]}_{embedder_version[1]}_S{summarization_version[0]}_{summarization_version[1]}.csv'
+
+        return file_name
+    
+    def get_summary_from_file(self, file_name_summary, **kwargs):
+        try:
+            with open(file_name_summary, mode='r', newline='', encoding='utf-8') as csvfile:
+                temp = csv.DictReader(csvfile, delimiter=';')
+
+                for row in temp:
+                    if row['neighbourhood_id'] == kwargs['neighbourhood_id']:
+                        return ast.literal_eval(row['summary_dict'])
+
+            return False
+        except:
+            return False
+
+    def save_summary(self, file_name_summary, summary, **kwargs):
+        with open(file_name_summary, mode='a+', newline='', encoding='utf-8') as csvfile:
+            csv_writer = csv.DictWriter(csvfile, fieldnames=['neighbourhood_id', 'summary_dict'], delimiter=';')
+
+            if csvfile.tell() == 0:
+                csv_writer.writeheader()
+
+            csv_writer.writerow({'neighbourhood_id': kwargs['neighbourhood_id'], 'summary_dict': summary})
 
     def run(self, **kwargs):
         version = kwargs['summarization_version'] if 'summarization_version' in kwargs else -1
@@ -436,6 +469,13 @@ class SummerizationPCAKmeans(SummarizationParent, DimensionalityReducer, Cluster
         self.name: str = "PCA_Kmeans"
 
     def run(self, **kwargs):
+        file_name_summary = self.get_summarization_file_name(**kwargs)
+
+        summary = self.get_summary_from_file(file_name_summary, **kwargs)
+
+        if summary != False:
+            return summary
+
         data = kwargs['data']
         n_pca_d = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 25
         n_clusters = kwargs['n_clusters'] if 'n_clusters' in kwargs else 5
@@ -443,7 +483,11 @@ class SummerizationPCAKmeans(SummarizationParent, DimensionalityReducer, Cluster
         kmeans = self.apply_kmeans(
             data=pca_data, n_clusters=n_clusters, seed=42)
         centers = self.get_kmeans_centre(data=pca_data)
-        return self.generate_output_dict(kmeans, centers)
+
+        summary = self.generate_output_dict(kmeans, centers)
+        self.save_summary(file_name_summary, summary, **kwargs)
+
+        return summary
 
 ########################################## 2.0 ##########################################################
 
@@ -463,6 +507,13 @@ class SummerizationPCAHierarchy(SummarizationParent, DimensionalityReducer, Clus
         self.name: str = "PCA_Hierical"
 
     def run(self, **kwargs):
+        file_name_summary = self.get_summarization_file_name(**kwargs)
+
+        summary = self.get_summary_from_file(file_name_summary, **kwargs)
+        
+        if summary != False:
+            return summary
+        
         data = kwargs['data']
         n_pca_d = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 25
         n_clusters = kwargs['n_clusters'] if 'n_clusters' in kwargs else 5
@@ -470,7 +521,11 @@ class SummerizationPCAHierarchy(SummarizationParent, DimensionalityReducer, Clus
         hierarchical = self.apply_hierarchical(
             data=pca_data, n_clusters=n_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=pca_data)
-        return self.generate_output_dict(hierarchical, centers)
+
+        summary = self.generate_output_dict(hierarchical, centers)
+        self.save_summary(file_name_summary, summary, **kwargs)
+
+        return summary
 
 ########################################## 2.1 ##########################################################
 
@@ -490,6 +545,13 @@ class SummerizationPCADensity(SummarizationParent, DimensionalityReducer, Cluste
         self.name: str = "PCA_Density"
 
     def run(self, **kwargs):
+        file_name_summary = self.get_summarization_file_name(**kwargs)
+
+        summary = self.get_summary_from_file(file_name_summary, **kwargs)
+
+        if summary != False:
+            return summary
+        
         data = kwargs['data']
         n_pca_d = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 25
         min_samples: int = kwargs['min_samples'] if 'min_samples' in kwargs else 5
@@ -497,7 +559,11 @@ class SummerizationPCADensity(SummarizationParent, DimensionalityReducer, Cluste
         pca_data = self.apply_pca(data=data, n_dimensions=n_pca_d)
         density = self.apply_density(data=pca_data, min_samples=min_samples)
         centers = self.get_density_centre(data=pca_data)
-        return self.generate_output_dict(density, centers)
+
+        summary = self.generate_output_dict(density, centers)
+        self.save_summary(file_name_summary, summary, **kwargs)
+
+        return summary
 
 ########################################## 2.2 ##########################################################
 
@@ -508,6 +574,13 @@ class SummerizationTSNEKmeans(SummarizationParent, DimensionalityReducer, Cluste
         self.name: str = "TSNE_Kmeans"
 
     def run(self, **kwargs):
+        file_name_summary = self.get_summarization_file_name(**kwargs)
+
+        summary = self.get_summary_from_file(file_name_summary, **kwargs)
+
+        if summary != False:
+            return summary
+        
         data = kwargs['data']
         n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 25
         n_clusters = kwargs['n_clusters'] if 'n_clusters' in kwargs else 5
@@ -515,7 +588,11 @@ class SummerizationTSNEKmeans(SummarizationParent, DimensionalityReducer, Cluste
         kmeans = self.apply_kmeans(
             data=TSNE_data, n_clusters=n_clusters, seed=42)
         centers = self.get_kmeans_centre(data=TSNE_data)
-        return self.generate_output_dict(kmeans, centers)
+        
+        summary = self.generate_output_dict(kmeans, centers)
+        self.save_summary(file_name_summary, summary, **kwargs)
+
+        return summary
 
 ########################################## 2.3 ##########################################################
 
@@ -526,6 +603,13 @@ class SummerizationTSNEHierarchy(SummarizationParent, DimensionalityReducer, Clu
         self.name: str = "TSNE_Hierical"
 
     def run(self, **kwargs):
+        file_name_summary = self.get_summarization_file_name(**kwargs)
+
+        summary = self.get_summary_from_file(file_name_summary, **kwargs)
+
+        if summary != False:
+            return summary
+        
         data = kwargs['data']
         n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 25
         n_clusters = kwargs['n_clusters'] if 'n_clusters' in kwargs else 5
@@ -533,7 +617,11 @@ class SummerizationTSNEHierarchy(SummarizationParent, DimensionalityReducer, Clu
         hierarchical = self.apply_hierarchical(
             data=TSNE_data, n_clusters=n_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=TSNE_data)
-        return self.generate_output_dict(hierarchical, centers)
+
+        summary = self.generate_output_dict(hierarchical, centers)
+        self.save_summary(file_name_summary, summary, **kwargs)
+
+        return summary
 
 ########################################## 2.4 ##########################################################
 
@@ -544,6 +632,13 @@ class SummerizationTSNEDensity(SummarizationParent, DimensionalityReducer, Clust
         self.name: str = "TSNE_Density"
 
     def run(self, **kwargs):
+        file_name_summary = self.get_summarization_file_name(**kwargs)
+
+        summary = self.get_summary_from_file(file_name_summary, **kwargs)
+
+        if summary != False:
+            return summary
+        
         data = kwargs['data']
         n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 25
         min_samples: int = kwargs['min_samples'] if 'min_samples' in kwargs else 5
@@ -551,7 +646,11 @@ class SummerizationTSNEDensity(SummarizationParent, DimensionalityReducer, Clust
         TSNE_data = self.apply_TSNE(data=data, n_dimensions=n_dimensions)
         density = self.apply_density(data=TSNE_data, min_samples=min_samples)
         centers = self.get_density_centre(data=TSNE_data)
-        return self.generate_output_dict(density, centers)
+
+        summary = self.generate_output_dict(density, centers)
+        self.save_summary(file_name_summary, summary, **kwargs)
+
+        return summary
 
 ########################################## 2.5 ##########################################################
 
@@ -562,6 +661,13 @@ class SummerizationUMAPKmeans(SummarizationParent, DimensionalityReducer, Cluste
         self.name: str = "UMAP_Kmeans"
 
     def run(self, **kwargs):
+        file_name_summary = self.get_summarization_file_name(**kwargs)
+
+        summary = self.get_summary_from_file(file_name_summary, **kwargs)
+
+        if summary != False:
+            return summary
+        
         data = kwargs['data']
         n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 25
         n_clusters = kwargs['n_clusters'] if 'n_clusters' in kwargs else 5
@@ -570,7 +676,11 @@ class SummerizationUMAPKmeans(SummarizationParent, DimensionalityReducer, Cluste
         kmeans = self.apply_kmeans(
             data=UMAP_data, n_clusters=n_clusters, seed=42)
         centers = self.get_kmeans_centre(data=UMAP_data)
-        return self.generate_output_dict(kmeans, centers)
+
+        summary = self.generate_output_dict(kmeans, centers)
+        self.save_summary(file_name_summary, summary, **kwargs)
+
+        return summary
 
 ########################################## 2.6 ##########################################################
 
@@ -581,6 +691,13 @@ class SummerizationUMAPHierarchy(SummarizationParent, DimensionalityReducer, Clu
         self.name: str = "UMAP_Hierical"
 
     def run(self, **kwargs):
+        file_name_summary = self.get_summarization_file_name(**kwargs)
+
+        summary = self.get_summary_from_file(file_name_summary, **kwargs)
+
+        if summary != False:
+            return summary
+        
         data = kwargs['data']
         n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 25
         n_clusters = kwargs['n_clusters'] if 'n_clusters' in kwargs else 5
@@ -589,7 +706,11 @@ class SummerizationUMAPHierarchy(SummarizationParent, DimensionalityReducer, Clu
         hierarchical = self.apply_hierarchical(
             data=UMAP_data, n_clusters=n_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=UMAP_data)
-        return self.generate_output_dict(hierarchical, centers)
+
+        summary = self.generate_output_dict(hierarchical, centers)
+        self.save_summary(file_name_summary, summary, **kwargs)
+
+        return summary
 
 ########################################## 2.7 ##########################################################
 
@@ -600,6 +721,13 @@ class SummerizationUMAPDensity(SummarizationParent, DimensionalityReducer, Clust
         self.name: str = "UMAP_Density"
 
     def run(self, **kwargs):
+        file_name_summary = self.get_summarization_file_name(**kwargs)
+
+        summary = self.get_summary_from_file(file_name_summary, **kwargs)
+
+        if summary != False:
+            return summary
+        
         data = kwargs['data']
         n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 25
         min_samples: int = kwargs['min_samples'] if 'min_samples' in kwargs else 5
@@ -608,7 +736,11 @@ class SummerizationUMAPDensity(SummarizationParent, DimensionalityReducer, Clust
             data=data, n_dimensions=n_dimensions, seed=42)
         density = self.apply_density(data=UMAP_data, min_samples=min_samples)
         centers = self.get_density_centre(data=UMAP_data)
-        return self.generate_output_dict(density, centers)
+
+        summary = self.generate_output_dict(density, centers)
+        self.save_summary(file_name_summary, summary, **kwargs)
+
+        return summary
 
 ########################################## 3.0 ##########################################################
 
@@ -619,6 +751,13 @@ class SummerizationPCADensityKmeans(SummarizationParent, DimensionalityReducer, 
         self.name: str = "PCA_Density_Kmeans"
 
     def run(self, **kwargs):
+        file_name_summary = self.get_summarization_file_name(**kwargs)
+
+        summary = self.get_summary_from_file(file_name_summary, **kwargs)
+
+        if summary != False:
+            return summary
+        
         data = kwargs['data']
         n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 25
 
@@ -630,7 +769,11 @@ class SummerizationPCADensityKmeans(SummarizationParent, DimensionalityReducer, 
         kmeans = self.apply_kmeans(
             data=pca_data, n_clusters=n_clusters, seed=42)
         centers = self.get_kmeans_centre(data=pca_data)
-        return self.generate_output_dict(kmeans, centers)
+
+        summary = self.generate_output_dict(kmeans, centers)
+        self.save_summary(file_name_summary, summary, **kwargs)
+
+        return summary
 
 ########################################## 3.1 ##########################################################
 
@@ -641,6 +784,13 @@ class SummerizationPCADensityDensity(SummarizationParent, DimensionalityReducer,
         self.name: str = "PCA_Density_Density"
 
     def run(self, **kwargs):
+        file_name_summary = self.get_summarization_file_name(**kwargs)
+
+        summary = self.get_summary_from_file(file_name_summary, **kwargs)
+
+        if summary != False:
+            return summary
+        
         data = kwargs['data']
         n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 25
 
@@ -651,7 +801,11 @@ class SummerizationPCADensityDensity(SummarizationParent, DimensionalityReducer,
             n_clusters = 5
         density = self.apply_density(data=pca_data, min_samples=3, seed=42)
         centers = self.get_density_centre(data=pca_data)
-        return self.generate_output_dict(density, centers)
+        
+        summary = self.generate_output_dict(density, centers)
+        self.save_summary(file_name_summary, summary, **kwargs)
+
+        return summary
 
 ########################################## 3.2 ##########################################################
 
@@ -662,6 +816,13 @@ class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer
         self.name: str = "PCA_Density_Hirarchy"
 
     def run(self, **kwargs):
+        file_name_summary = self.get_summarization_file_name(**kwargs)
+
+        summary = self.get_summary_from_file(file_name_summary, **kwargs)
+
+        if summary != False:
+            return summary
+        
         data = kwargs['data']
         n_dimensions = kwargs['n_dimensions'] if 'n_dimensions' in kwargs else 25
 
@@ -674,7 +835,11 @@ class SummerizationPCADensityHirarchy(SummarizationParent, DimensionalityReducer
         hierarchical = self.apply_hierarchical(
             data=pca_data, n_clusters=n_clusters, seed=42)
         centers = self.get_hierarchical_centre(data=pca_data)
-        return self.generate_output_dict(hierarchical, centers)
+
+        summary = self.generate_output_dict(hierarchical, centers)
+        self.save_summary(file_name_summary, summary, **kwargs)
+
+        return summary
 
 # Below functions are used to compare the different versions of the summarization algorithm
 

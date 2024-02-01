@@ -45,13 +45,17 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
 
     neighbourhood_images, images, neighbourhoods = database_parent.run(
         **kwargs)  # type: tuple[dict[str, list[int]], GeoDataFrame, GeoDataFrame]
+    
+    max_neighbourhoods = max([int(neighbourhood_id) for neighbourhood_id in neighbourhood_images])
 
-    start_hood = min(len(neighbourhood_images), max(
+    start_hood = min(max_neighbourhoods, max(
         0, kwargs['start_hood'])) if 'start_hood' in kwargs else 0
-    stop_hood = min(len(neighbourhood_images), max(
-        0, kwargs['stop_hood'])) if 'stop_hood' in kwargs else len(neighbourhood_images)
+    stop_hood = min(max_neighbourhoods + 1, max(
+        0, kwargs['stop_hood'])) if 'stop_hood' in kwargs else max_neighbourhoods
     step_size = min(len(neighbourhood_images), max(
         0, kwargs['step_size'])) if 'step_size' in kwargs else 1
+    
+    kwargs['stop_hood'] = stop_hood
 
     wanted_hoods = [i for i in range(start_hood, stop_hood, step_size)]
     print('Using neighbourhood ids:', wanted_hoods)
@@ -59,7 +63,6 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
     embedding_neighbourhood = dict()
 
     for neighbourhood_id, image_ids in tqdm(neighbourhood_images.items(), total=len(neighbourhood_images), desc='Getting embeddings'):
-
         if int(neighbourhood_id) not in wanted_hoods:
             continue
 
@@ -72,13 +75,12 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
                 image_id=image_id, **kwargs)  # list[float]
 
         embedding_neighbourhood[neighbourhood_id] = embeddings
-
     summaries = dict()
 
     for neighbourhood_id in tqdm(embedding_neighbourhood, desc='Generating summaries'):
         # summaries is of type: tuple[dict[str, list[str]], dict[str, str]], so tuple[clusters, centroids]
         summaries[str(neighbourhood_id)] = summarization_parent.run(
-            data=embedding_neighbourhood[str(neighbourhood_id)], **kwargs)
+            data=embedding_neighbourhood[str(neighbourhood_id)], neighbourhood_id=str(neighbourhood_id), **kwargs)
 
     if 'visualization_version' not in kwargs or kwargs['visualization_version'] >= 3.0:
         visualization_parent.run(summaries=summaries, embeddings=embedding_neighbourhood,
@@ -92,8 +94,8 @@ def OneRUNtoRUNthemALL(**kwargs) -> None:
 
 
 if __name__ == '__main__':
-    OneRUNtoRUNthemALL(database_version=3.0, start_hood=0, stop_hood=10, step_size=1,  # start_year=2008, end_year=2022,
-                       embedder_version=1.0, max_files=1000,
+    OneRUNtoRUNthemALL(database_version=3.0, start_hood=10, stop_hood=11, step_size=1, start_year=2008, end_year=2015,
+                       embedder_version=2.1, max_files=1000,
                        summarization_version=3.0, n_clusters=5, n_dimensions=25,
                        visualization_version=3.0, visualize=True,
                        file_name='')

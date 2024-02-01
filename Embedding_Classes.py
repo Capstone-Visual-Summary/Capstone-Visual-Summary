@@ -32,10 +32,6 @@ class EmbeddingParent(GrandParent):
 
         Returns:
         str: The file path.
-
-        Example:
-        >>> get_file_path('1.0', 100)
-        'Embedding Files/v1_0_100_0.npy'
         """
         version_split = str(version).split('.')
         version_str = f'v{version_split[0]}_{version_split[1]}'
@@ -60,7 +56,7 @@ class EmbeddingResNet(EmbeddingParent):
         self.version: float | str = 1.0
         self.name: str = "EmbeddingResNet 1.0"
         self.files_in_memory: List[str] = []
-        self.image_embeddings: Dict[str, Any] = dict()
+        self.image_embeddings: Dict[str, torch.Tensor] = dict()
 
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
         """
@@ -78,7 +74,7 @@ class EmbeddingResNet(EmbeddingParent):
         vec = torch.tensor(img2vec.get_vec(img))
         return vec
     
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> torch.Tensor: # type: ignore
         """
         Runs the embedding process for a given image ID.
 
@@ -110,7 +106,7 @@ class EmbeddingResNet(EmbeddingParent):
             upper_bound = int(self.files_in_memory[0].split('_')[4].split('.')[0]) + 1
 
             for i in range(lower_bound, upper_bound):
-                del self.image_embeddings[int(i)]
+                del self.image_embeddings[str(i)]
 
             del self.files_in_memory[0]
 
@@ -254,8 +250,10 @@ class EmbeddingResNet_2_1(EmbeddingParent):
         run: Runs the embedding process and returns the image embedding vector.
     """
     def __init__(self) -> None:
-        self.version: float | str = '2.1 WIP'
+        self.version: float | str = 2.1
         self.name: str = "EmbeddingResNet 2.1 with triplet loss" 
+        self.files_in_memory: list[str] = []
+        self.image_embeddings: dict[str, torch.Tensor] = dict()
     
     def Image2Vec_embedder_ResNet152(self, image) -> torch.Tensor:
         """
@@ -285,50 +283,57 @@ class EmbeddingResNet_2_1(EmbeddingParent):
         vec = torch.tensor(resnet152(img.unsqueeze(0))) 
         return vec
         
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> torch.Tensor: # type: ignore
         """
-        Runs the embedding process and returns the image embedding vector.
+        Runs the embedding process for a given image ID.
 
         Args:
             **kwargs: Additional keyword arguments.
+                - file_name (str): The name of the file containing the image embeddings.
+                - image_id (int): The ID of the image to retrieve the embedding for.
+                - max_files (int): The maximum number of files to keep in memory.
 
         Returns:
-            torch.Tensor: The image embedding vector.
+            torch.Tensor: The embedding tensor for the specified image ID.
+
+        Raises:
+            FileNotFoundError: If the specified file cannot be found.
+            ValueError: If the embedding for the specified image ID is not found in the file.
         """
         if 'file_name' in kwargs and kwargs['file_name'] != '':
             file_name = f"Embedding Files/" + kwargs['file_name']
         else:
-            version_split = str(self.version).split('.')
-            file_name = f'Embedding Files/Embeddings_{version_split[0]}_{version_split[1]}_0.csv'
+            file_name = self.get_file_path(self.version, kwargs['image_id'])
 
-        if not hasattr(self, 'image_embeddings'):
-            try:
-                with open(file_name, mode='r', newline='') as csvfile:
-                    temp = csv.DictReader(csvfile)
-                    
-                self.image_embeddings = dict()
-                
+        if file_name in self.files_in_memory:
+            return self.image_embeddings[str(kwargs['image_id'])]
+
+        max_files = int(kwargs['max_files']) if 'max_files' in kwargs and int(kwargs['max_files']) >= 1 else 100
+
+        if len(self.files_in_memory) == max_files:
+            lower_bound = int(self.files_in_memory[0].split('_')[3].split('_')[0])
+            upper_bound = int(self.files_in_memory[0].split('_')[4].split('.')[0]) + 1
+
+            for i in range(lower_bound, upper_bound):
+                del self.image_embeddings[str(i)]
+
+            del self.files_in_memory[0]
+
+            self.files_in_memory.append(file_name)
+        else:
+            self.files_in_memory.append(file_name)
+
+        try:
+            with open(file_name, mode='r', newline='', encoding='utf-8') as csvfile:
+                temp = csv.DictReader(csvfile, delimiter=';')
+
                 for row in temp:
                     self.image_embeddings[row['image_id']] = torch.Tensor(ast.literal_eval(row['tensor']))
-            except:
-                self.image_embeddings = dict()
-        
+        except FileNotFoundError:
+            raise FileNotFoundError(f'Could not find file: {file_name}, please check if you have it downloaded')
+
         if str(kwargs['image_id']) in self.image_embeddings:
             return self.image_embeddings[str(kwargs['image_id'])]
-        
-        path = 'U:/staff-umbrella/imagesummary/data/Delft_NL/imagedb/' + kwargs['img_path']
-        
-        image_embedding = self.Image2Vec_embedder_ResNet152(path)
 
-        self.image_embeddings[str(kwargs['image_id'])] = image_embedding
-
-        with open(file_name, mode='w', newline='') as csvfile:
-            csv_writer = csv.DictWriter(csvfile, fieldnames=['image_id', 'tensor'])
-
-            if csvfile.tell() == 0:
-                csv_writer.writeheader()
-
-            for image_id, tensor in self.image_embeddings.items():
-                csv_writer.writerow({'image_id': image_id, 'tensor': tensor.tolist()})
-            
-        return image_embedding
+        if str(kwargs['image_id']) not in self.image_embeddings:
+            raise ValueError(f"Embedding of {kwargs['image_id']} not found. Please check {file_name} to see if it is included")
